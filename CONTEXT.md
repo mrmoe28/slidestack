@@ -387,6 +387,42 @@ npm run build
 
 ---
 
+## 🎬 CapCut-Inspired Multi-Track Timeline (2025-10-07)
+
+**Research Sources:**
+- CapCut track management and layering documentation
+- DaVinci Resolve, Premiere Pro multi-track implementations
+- React video editor overlay patterns
+
+**Key Findings:**
+
+### Multi-Track Architecture
+1. **Layer-based timeline**: Multiple tracks stacked vertically
+2. **Z-order hierarchy**: Top layers in foreground, bottom layers in background
+3. **Track types**:
+   - **Main Video Track** (bottom) - Primary video/image sequence
+   - **Overlay Tracks** (above video) - Picture-in-picture, logos, graphics
+   - **Audio Tracks** (separate section) - Music, voiceover, sound effects
+   - **Text/Graphics Layers** - Captions, titles, stickers (movable above/below video)
+4. **Free Layer Feature**: Text/stickers can be reordered relative to video clips
+
+### Track Behavior
+- Top track = foreground visibility (occludes lower tracks)
+- Bottom track = background layer
+- Audio tracks blend together (not occluded)
+- Drag-and-drop to reorder tracks
+- Independent clip positioning within each track
+
+### Implementation Plan
+- **Video Track**: Main timeline track for images/videos
+- **Overlay Track**: Additional video layer for overlays
+- **Audio Track**: Dedicated track for background music/audio
+- **Text Track**: Floating text overlays with adjustable z-index
+- **Track labels**: Left sidebar showing track names/icons
+- **Track height**: 80-100px per track (scrollable if many tracks)
+
+---
+
 ## 📚 Key Decisions & Rationale
 
 **Why Next.js 15?**
