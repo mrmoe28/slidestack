@@ -74,10 +74,12 @@ const authConfig = db
       session: {
         strategy: 'jwt' as const,
       },
+      secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
       trustHost: true,
     }
   : {
       providers: [],
+      secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
       trustHost: true,
     }
 
