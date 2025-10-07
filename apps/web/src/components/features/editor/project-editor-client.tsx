@@ -4,9 +4,10 @@ import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Save, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ProjectEditor } from '@/components/features/editor/project-editor'
+import { ProjectEditorNew } from '@/components/features/editor/project-editor-new'
 import { MediaUploader } from '@/components/features/editor/media-uploader'
 import { Timeline } from '@/components/features/editor/timeline'
+import { PreviewControls } from '@/components/features/editor/preview-controls'
 import { toast } from 'sonner'
 
 interface TimelineClip {
@@ -36,6 +37,7 @@ interface ProjectEditorClientProps {
 export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
   const [clips, setClips] = useState<TimelineClip[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [isRendering, setIsRendering] = useState(false)
   const [totalDuration, setTotalDuration] = useState(0)
 
   const handleClipsChange = useCallback((updatedClips: TimelineClip[]) => {
@@ -79,6 +81,52 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
     }
   }
 
+  const handleRenderVideo = async () => {
+    if (clips.length === 0) {
+      toast.error('Please add clips to the timeline before rendering')
+      return
+    }
+
+    setIsRendering(true)
+
+    try {
+      // First save the project
+      await handleSave()
+
+      // Then trigger render job
+      const response = await fetch(`/api/projects/${project.id}/render`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          timeline: clips,
+          duration: totalDuration,
+          resolution: '1920x1080',
+          fps: 30,
+          quality: 'high',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to start render')
+      }
+
+      const { jobId } = await response.json()
+
+      toast.success('Rendering started! This may take a few minutes...', {
+        description: `Job ID: ${jobId}`,
+      })
+
+      // TODO: Implement job status polling
+    } catch (error) {
+      console.error('Render error:', error)
+      toast.error('Failed to start rendering')
+    } finally {
+      setIsRendering(false)
+    }
+  }
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
@@ -113,9 +161,14 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
             <Save className="w-4 h-4 mr-1.5" />
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
-          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <Button
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={handleRenderVideo}
+            disabled={isRendering || clips.length === 0}
+          >
             <Play className="w-4 h-4 mr-1.5" />
-            Render Video
+            {isRendering ? 'Rendering...' : 'Render Video'}
           </Button>
         </div>
       </header>
@@ -131,9 +184,9 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
               <MediaUploader projectId={project.id} />
             </div>
 
-            {/* Slide Editor */}
+            {/* Audio Library & Tools */}
             <div className="border-t pt-4">
-              <ProjectEditor projectId={project.id} projectTitle={project.title} />
+              <ProjectEditorNew projectId={project.id} projectTitle={project.title} />
             </div>
           </div>
         </aside>
@@ -141,9 +194,10 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
         {/* Center - Preview Area */}
         <main className="flex-1 flex flex-col bg-gray-50 min-w-0">
           <div className="flex-1 flex items-center justify-center p-6">
-            <div className="w-full h-full max-w-5xl max-h-full flex items-center justify-center">
-              <div id="preview-canvas" className="w-full aspect-video bg-white rounded-lg shadow-xl flex items-center justify-center border-2 border-gray-200">
+            <div className="w-full h-full max-w-5xl max-h-full flex items-center justify-center relative">
+              <div id="preview-canvas" className="w-full aspect-video bg-white rounded-lg shadow-xl flex items-center justify-center border-2 border-gray-200 relative">
                 <p className="text-gray-400 text-lg">Preview Canvas</p>
+                <PreviewControls />
               </div>
             </div>
           </div>
