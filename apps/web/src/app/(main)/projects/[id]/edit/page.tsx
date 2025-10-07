@@ -77,7 +77,7 @@ export default async function ProjectEditorPage({ params }: PageProps) {
             {/* Media Uploader */}
             <div>
               <h2 className="text-sm font-semibold text-gray-900 mb-3">Media Library</h2>
-              <MediaUploader />
+              <MediaUploader projectId={project.id} />
             </div>
 
             {/* Slide Editor */}

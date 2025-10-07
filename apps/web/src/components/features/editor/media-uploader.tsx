@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Upload, File, X } from 'lucide-react'
+import { Upload, File, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface MediaFile {
@@ -13,7 +13,12 @@ interface MediaFile {
   url: string
 }
 
-export function MediaUploader() {
+interface MediaUploaderProps {
+  projectId: string
+  onFileUploaded?: (file: MediaFile) => void
+}
+
+export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps) {
   const [files, setFiles] = useState<MediaFile[]>([])
   const [uploading, setUploading] = useState(false)
   const { toast } = useToast()
@@ -25,42 +30,74 @@ export function MediaUploader() {
     setUploading(true)
 
     try {
-      const newFiles: MediaFile[] = []
+      const uploadedFiles: MediaFile[] = []
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i]
 
-        // Create temporary URL for preview
-        const url = URL.createObjectURL(file)
+        // Create FormData for upload
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('projectId', projectId)
+        formData.append('order', String(files.length + i))
 
-        newFiles.push({
-          id: `file-${Date.now()}-${i}`,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          url,
+        // Upload to API
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
         })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Upload failed')
+        }
+
+        const result = await response.json()
+
+        const uploadedFile: MediaFile = {
+          id: result.file.id,
+          name: result.file.filename,
+          size: result.file.size,
+          type: result.file.type,
+          url: result.file.url,
+        }
+
+        uploadedFiles.push(uploadedFile)
+
+        // Notify parent component
+        if (onFileUploaded) {
+          onFileUploaded(uploadedFile)
+        }
       }
 
-      setFiles([...files, ...newFiles])
+      setFiles([...files, ...uploadedFiles])
 
       toast({
-        title: 'Files uploaded',
-        description: `${newFiles.length} file(s) added successfully`,
+        title: 'Upload successful',
+        description: `${uploadedFiles.length} file(s) uploaded successfully`,
       })
-    } catch {
+    } catch (error) {
+      console.error('Upload error:', error)
       toast({
         title: 'Upload failed',
-        description: 'Failed to upload files. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to upload files. Please try again.',
         variant: 'destructive',
       })
     } finally {
       setUploading(false)
+      // Reset the input
+      event.target.value = ''
     }
-  }, [files, toast])
+  }, [files, projectId, onFileUploaded, toast])
 
-  const removeFile = (id: string) => {
+  const removeFile = async (id: string) => {
+    // TODO: Add API call to delete file from server
     setFiles(files.filter(f => f.id !== id))
+
+    toast({
+      title: 'File removed',
+      description: 'File removed from library',
+    })
   }
 
   const formatFileSize = (bytes: number) => {
@@ -79,17 +116,27 @@ export function MediaUploader() {
           id="file-upload"
           className="hidden"
           multiple
-          accept="image/*,video/*,audio/*"
+          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp3,audio/wav"
           onChange={handleFileSelect}
           disabled={uploading}
         />
         <label htmlFor="file-upload" className="cursor-pointer">
-          <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-          <p className="text-sm text-gray-600 mb-1">
+          {uploading ? (
+            <Loader2 className="w-8 h-8 mx-auto mb-2 text-indigo-500 animate-spin" />
+          ) : (
+            <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+          )}
+          <p className="text-sm text-gray-600 mb-1 font-medium">
             {uploading ? 'Uploading...' : 'Click to upload files'}
           </p>
           <p className="text-xs text-gray-500">
-            Images, videos, or audio files
+            Images (JPG, PNG, GIF, WebP, SVG)
+          </p>
+          <p className="text-xs text-gray-500">
+            Videos (MP4, WebM, MOV) • Audio (MP3, WAV)
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Max file size: 100MB
           </p>
         </label>
       </div>
@@ -105,13 +152,22 @@ export function MediaUploader() {
                 key={file.id}
                 className="flex items-center gap-2 p-2 bg-white border rounded-lg hover:bg-gray-50"
               >
-                <File className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                {file.type === 'image' && file.url && (
+                  <img
+                    src={file.url}
+                    alt={file.name}
+                    className="w-10 h-10 object-cover rounded flex-shrink-0"
+                  />
+                )}
+                {file.type !== 'image' && (
+                  <File className="w-10 h-10 text-gray-500 flex-shrink-0 p-2" />
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {file.name}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {formatFileSize(file.size)}
+                    {formatFileSize(file.size)} • {file.type}
                   </p>
                 </div>
                 <Button
