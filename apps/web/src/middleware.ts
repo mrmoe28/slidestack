@@ -1,35 +1,35 @@
-import { auth } from './lib/auth'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export default auth((req) => {
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const isLoggedIn = !!req.auth
 
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/signup', '/login/error', '/login/verify']
   const isPublicRoute = publicRoutes.includes(pathname)
 
-  // API routes
-  const isAuthApi = pathname.startsWith('/api/auth')
+  // API routes - allow all API routes for now
+  const isApiRoute = pathname.startsWith('/api')
 
-  // Allow public routes
-  if (isPublicRoute) {
+  // Static files and Next.js internals are already excluded by matcher
+
+  // Allow public routes and API routes
+  if (isPublicRoute || isApiRoute) {
     return NextResponse.next()
   }
 
-  // Allow auth API routes
-  if (isAuthApi) {
-    return NextResponse.next()
-  }
+  // For protected routes, check for session
+  // This is a simple check - you may want to enhance this with actual session verification
+  const hasSession = req.cookies.has('authjs.session-token') ||
+                     req.cookies.has('__Secure-authjs.session-token')
 
-  // Protect all other routes
-  if (!isLoggedIn && !isPublicRoute) {
+  if (!hasSession) {
     const loginUrl = new URL('/login', req.url)
     return NextResponse.redirect(loginUrl)
   }
 
   return NextResponse.next()
-})
+}
 
 export const config = {
   matcher: [
