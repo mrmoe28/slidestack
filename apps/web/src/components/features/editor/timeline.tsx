@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon } from 'lucide-react'
+import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, TrimIcon as Trim } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 
@@ -35,6 +35,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
   const [currentTime, setCurrentTime] = useState(0)
   const [zoom, setZoom] = useState(1)
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   const PIXELS_PER_SECOND = 50 * zoom
@@ -116,6 +117,61 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
   const removeClip = useCallback((clipId: string) => {
     const updatedClips = clips.filter(c => c.id !== clipId)
+    setClips(updatedClips)
+
+    if (onClipsChange) {
+      onClipsChange(updatedClips)
+    }
+  }, [clips, onClipsChange])
+
+  const splitClip = useCallback((clipId: string) => {
+    const clip = clips.find(c => c.id === clipId)
+    if (!clip) return
+
+    // Split at the midpoint of the clip
+    const splitPoint = clip.duration / 2
+
+    const firstHalf: TimelineClip = {
+      ...clip,
+      id: `clip-${Date.now()}-1`,
+      duration: splitPoint,
+    }
+
+    const secondHalf: TimelineClip = {
+      ...clip,
+      id: `clip-${Date.now()}-2`,
+      duration: clip.duration - splitPoint,
+      order: clip.order + 1,
+    }
+
+    // Replace the original clip with two halves
+    const updatedClips = clips
+      .filter(c => c.id !== clipId)
+      .map(c => {
+        // Increment order for clips after the split point
+        if (c.track === clip.track && c.order > clip.order) {
+          return { ...c, order: c.order + 1 }
+        }
+        return c
+      })
+      .concat([firstHalf, secondHalf])
+      .sort((a, b) => a.order - b.order)
+
+    setClips(updatedClips)
+
+    if (onClipsChange) {
+      onClipsChange(updatedClips)
+    }
+  }, [clips, onClipsChange])
+
+  const trimClip = useCallback((clipId: string, newDuration: number) => {
+    const updatedClips = clips.map(c => {
+      if (c.id === clipId) {
+        return { ...c, duration: Math.max(0.5, newDuration) } // Minimum 0.5s
+      }
+      return c
+    })
+
     setClips(updatedClips)
 
     if (onClipsChange) {
@@ -275,6 +331,88 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     }
   }, [currentTime, clips])
 
+  // Audio playback synchronization
+  useEffect(() => {
+    const audioClips = clips.filter(c => c.track === 'audio').sort((a, b) => a.order - b.order)
+
+    if (!isPlaying || audioClips.length === 0) {
+      // Stop audio when not playing
+      if (audioElement) {
+        audioElement.pause()
+        setAudioElement(null)
+      }
+      return
+    }
+
+    // Find which audio clip should be playing at currentTime
+    let accumulatedTime = 0
+    let currentAudioClip: TimelineClip | null = null
+    let clipStartTime = 0
+
+    for (const clip of audioClips) {
+      if (currentTime >= accumulatedTime && currentTime < accumulatedTime + clip.duration) {
+        currentAudioClip = clip
+        clipStartTime = accumulatedTime
+        break
+      }
+      accumulatedTime += clip.duration
+    }
+
+    if (!currentAudioClip) {
+      // No audio at this point, stop playback
+      if (audioElement) {
+        audioElement.pause()
+        setAudioElement(null)
+      }
+      return
+    }
+
+    const mediaFile = currentAudioClip.content as MediaFile
+
+    // If audio element doesn't exist or is different clip, create new one
+    if (!audioElement || audioElement.src !== mediaFile.url) {
+      if (audioElement) {
+        audioElement.pause()
+      }
+
+      const audio = new Audio(mediaFile.url)
+      audio.volume = 0.5 // 50% volume
+
+      // Calculate position within the clip
+      const positionInClip = currentTime - clipStartTime
+      audio.currentTime = Math.max(0, positionInClip)
+
+      audio.play().catch(err => {
+        console.error('Audio playback error:', err)
+      })
+
+      setAudioElement(audio)
+    } else {
+      // Sync existing audio element
+      const positionInClip = currentTime - clipStartTime
+      const timeDiff = Math.abs(audioElement.currentTime - positionInClip)
+
+      // Resync if off by more than 0.1s
+      if (timeDiff > 0.1) {
+        audioElement.currentTime = positionInClip
+      }
+
+      // Ensure it's playing
+      if (audioElement.paused) {
+        audioElement.play().catch(err => {
+          console.error('Audio playback error:', err)
+        })
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (audioElement && !isPlaying) {
+        audioElement.pause()
+      }
+    }
+  }, [currentTime, isPlaying, clips, audioElement])
+
   // Generate time ruler ticks
   const generateTimeRulerTicks = () => {
     const totalDuration = getTotalDuration()
@@ -345,18 +483,53 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             </div>
           </div>
 
-          {/* Remove button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute top-0.5 right-0.5 h-6 w-6 p-0 bg-red-600 hover:bg-red-700 text-white opacity-0 group-hover:opacity-100 transition-opacity rounded"
-            onClick={(e) => {
-              e.stopPropagation()
-              removeClip(clip.id)
-            }}
-          >
-            <X className="w-4 h-4" />
-          </Button>
+          {/* Editing Tools */}
+          <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Split button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 text-white rounded"
+              onClick={(e) => {
+                e.stopPropagation()
+                splitClip(clip.id)
+              }}
+              title="Split clip"
+            >
+              <Scissors className="w-3 h-3" />
+            </Button>
+
+            {/* Trim button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-yellow-600 hover:bg-yellow-700 text-white rounded"
+              onClick={(e) => {
+                e.stopPropagation()
+                const newDuration = prompt(`Enter new duration (current: ${clip.duration.toFixed(1)}s):`)
+                if (newDuration) {
+                  trimClip(clip.id, parseFloat(newDuration))
+                }
+              }}
+              title="Trim clip"
+            >
+              <Trim className="w-3 h-3" />
+            </Button>
+
+            {/* Delete button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-red-600 hover:bg-red-700 text-white rounded"
+              onClick={(e) => {
+                e.stopPropagation()
+                removeClip(clip.id)
+              }}
+              title="Delete clip"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       )
     })
@@ -424,7 +597,13 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
         {/* Track Content */}
         <div ref={timelineRef} className="flex-1 overflow-x-auto overflow-y-hidden">
-          <div className="relative min-w-full h-full">
+          <div
+            className="relative h-full"
+            style={{
+              minWidth: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND, 800)}px`,
+              width: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND, 800)}px`
+            }}
+          >
             {/* Time Ruler */}
             <div className="h-10 bg-gray-50 border-b border-gray-200 relative">
               <div className="absolute inset-0 pl-2">{generateTimeRulerTicks()}</div>
