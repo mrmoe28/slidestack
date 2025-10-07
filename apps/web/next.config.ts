@@ -8,14 +8,9 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false, // Fix all ESLint errors
   },
   images: {
-    // Allow data URLs (base64) for images stored in database
+    // Allow SVG images
     dangerouslyAllowSVG: true,
-    remotePatterns: [
-      {
-        protocol: 'data',
-        hostname: '**',
-      },
-    ],
+    // Note: data URLs (base64) are used with regular <img> tags, not Next.js Image
   },
   // Note: typedRoutes requires Next.js 15
   // typedRoutes: true,
