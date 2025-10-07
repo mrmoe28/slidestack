@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd apps/web && pnpm install && pnpm build",
-  "installCommand": "pnpm install --filter=web...",
-  "framework": null
-}
