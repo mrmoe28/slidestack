@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Video, Clock, CheckCircle } from 'lucide-react'
 import { auth } from '@/lib/auth'
-import { db, projects } from '@slideshow/db'
-import { eq, desc } from 'drizzle-orm'
+import { db, projects, eq, desc } from '@slideshow/db'
 import { NewProjectDialog } from '@/components/features/projects/new-project-dialog'
 import { ProjectCard } from '@/components/features/projects/project-card'
 
@@ -63,7 +62,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {userProjects.filter((p) => p.status === 'processing').length}
+                {userProjects.filter((p: typeof projects.$inferSelect) => p.status === 'processing').length}
               </div>
               <p className="text-xs text-muted-foreground">Currently rendering</p>
             </CardContent>
@@ -76,7 +75,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {userProjects.filter((p) => p.status === 'completed').length}
+                {userProjects.filter((p: typeof projects.$inferSelect) => p.status === 'completed').length}
               </div>
               <p className="text-xs text-muted-foreground">Ready to download</p>
             </CardContent>
@@ -110,7 +109,7 @@ export default async function DashboardPage() {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {userProjects.map((project) => (
+              {userProjects.map((project: typeof projects.$inferSelect) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
             </div>

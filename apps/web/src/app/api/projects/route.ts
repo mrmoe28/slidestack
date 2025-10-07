@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
-import { db, projects } from '@slideshow/db'
-import { eq, desc } from 'drizzle-orm'
+import { db, projects, eq, desc } from '@slideshow/db'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
