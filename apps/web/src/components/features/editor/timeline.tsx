@@ -88,7 +88,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     e.stopPropagation()
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, targetTrack: 'video' | 'audio' | 'overlay') => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, _targetTrack: 'video' | 'audio' | 'overlay') => {
     e.preventDefault()
     e.stopPropagation()
     setIsDraggingOver(null)
@@ -98,10 +98,9 @@ export function Timeline({ onClipsChange }: TimelineProps) {
       if (!data) return
 
       const content: ClipContent = JSON.parse(data)
-      const contentTrack = getTrackForContent(content)
 
-      // Use target track if compatible, otherwise use content's natural track
-      const finalTrack = targetTrack === 'overlay' ? 'overlay' : contentTrack
+      // Content type ALWAYS determines the track (images→video, text→overlay, audio→audio)
+      const finalTrack = getTrackForContent(content)
 
       const duration = 'duration' in content && content.type === 'text'
         ? content.duration
@@ -376,7 +375,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
             {/* Overlay Track */}
             <div
-              className={`h-20 bg-purple-50 border-b border-gray-200 relative ${isDraggingOver === 'overlay' ? 'bg-indigo-100 ring-2 ring-indigo-400' : ''}`}
+              className={`h-20 bg-purple-50 border-b border-gray-200 relative ${isDraggingOver === 'overlay' ? 'bg-purple-100 ring-2 ring-purple-400' : ''}`}
               onDragEnter={(e) => handleDragEnter(e, 'overlay')}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
@@ -384,7 +383,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             >
               {clips.filter(c => c.track === 'overlay').length === 0 ? (
                 <div className="h-full flex items-center justify-center">
-                  <p className="text-xs text-gray-400">Drop text slides here</p>
+                  <p className="text-xs text-gray-500 font-medium">📝 Text slides only</p>
                 </div>
               ) : (
                 <div className="absolute inset-0">{renderTrackClips('overlay')}</div>
@@ -393,7 +392,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
             {/* Video Track */}
             <div
-              className={`h-20 bg-blue-50 border-b border-gray-200 relative ${isDraggingOver === 'video' ? 'bg-indigo-100 ring-2 ring-indigo-400' : ''}`}
+              className={`h-20 bg-blue-50 border-b border-gray-200 relative ${isDraggingOver === 'video' ? 'bg-blue-100 ring-2 ring-blue-400' : ''}`}
               onDragEnter={(e) => handleDragEnter(e, 'video')}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
@@ -402,7 +401,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             >
               {clips.filter(c => c.track === 'video').length === 0 ? (
                 <div className="h-full flex items-center justify-center">
-                  <p className="text-xs text-gray-400">Drop images/videos here</p>
+                  <p className="text-xs text-gray-500 font-medium">🖼️ Drop images/videos here to start</p>
                 </div>
               ) : (
                 <div className="absolute inset-0">{renderTrackClips('video')}</div>
@@ -411,7 +410,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
             {/* Audio Track */}
             <div
-              className={`h-16 bg-green-50 border-b border-gray-200 relative ${isDraggingOver === 'audio' ? 'bg-indigo-100 ring-2 ring-indigo-400' : ''}`}
+              className={`h-16 bg-green-50 border-b border-gray-200 relative ${isDraggingOver === 'audio' ? 'bg-green-100 ring-2 ring-green-400' : ''}`}
               onDragEnter={(e) => handleDragEnter(e, 'audio')}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
@@ -419,7 +418,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             >
               {clips.filter(c => c.track === 'audio').length === 0 ? (
                 <div className="h-full flex items-center justify-center">
-                  <p className="text-xs text-gray-400">Drop audio here</p>
+                  <p className="text-xs text-gray-500 font-medium">🎵 Background music/audio</p>
                 </div>
               ) : (
                 <div className="absolute inset-0">{renderTrackClips('audio')}</div>
