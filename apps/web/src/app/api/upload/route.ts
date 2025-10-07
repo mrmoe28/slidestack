@@ -3,15 +3,7 @@ import { auth } from '@/lib/auth'
 import { db, mediaFiles } from '@slideshow/db'
 
 export const dynamic = 'force-dynamic'
-
-// Next.js API route config - increase body size limit
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '500mb',
-    },
-  },
-}
+export const maxDuration = 60 // 60 seconds max execution time
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
 
