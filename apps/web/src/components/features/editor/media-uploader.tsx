@@ -21,19 +21,19 @@ interface MediaUploaderProps {
 export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps) {
   const [files, setFiles] = useState<MediaFile[]>([])
   const [uploading, setUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const { toast } = useToast()
 
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files
-    if (!selectedFiles || selectedFiles.length === 0) return
+  const uploadFiles = useCallback(async (filesToUpload: FileList) => {
+    if (filesToUpload.length === 0) return
 
     setUploading(true)
 
     try {
       const uploadedFiles: MediaFile[] = []
 
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i]
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i]
 
         // Create FormData for upload
         const formData = new FormData()
@@ -85,10 +85,45 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
       })
     } finally {
       setUploading(false)
-      // Reset the input
-      event.target.value = ''
     }
   }, [files, projectId, onFileUploaded, toast])
+
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files
+    if (!selectedFiles) return
+
+    await uploadFiles(selectedFiles)
+    // Reset the input
+    event.target.value = ''
+  }, [uploadFiles])
+
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const droppedFiles = e.dataTransfer.files
+    if (droppedFiles) {
+      await uploadFiles(droppedFiles)
+    }
+  }, [uploadFiles])
 
   const removeFile = async (id: string) => {
     // TODO: Add API call to delete file from server
@@ -110,7 +145,17 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
 
   return (
     <div className="space-y-4">
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+      <div
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition-all ${
+          isDragging
+            ? 'border-indigo-500 bg-indigo-50'
+            : 'border-gray-300 hover:border-indigo-400'
+        }`}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <input
           type="file"
           id="file-upload"
@@ -124,10 +169,10 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
           {uploading ? (
             <Loader2 className="w-8 h-8 mx-auto mb-2 text-indigo-500 animate-spin" />
           ) : (
-            <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+            <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
           )}
           <p className="text-sm text-gray-600 mb-1 font-medium">
-            {uploading ? 'Uploading...' : 'Click to upload files'}
+            {uploading ? 'Uploading...' : isDragging ? 'Drop files here' : 'Click to upload or drag and drop'}
           </p>
           <p className="text-xs text-gray-500">
             Images (JPG, PNG, GIF, WebP, SVG)
@@ -153,11 +198,14 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
                 className="flex items-center gap-2 p-2 bg-white border rounded-lg hover:bg-gray-50"
               >
                 {file.type === 'image' && file.url && (
-                  <img
-                    src={file.url}
-                    alt={file.name}
-                    className="w-10 h-10 object-cover rounded flex-shrink-0"
-                  />
+                  <div className="w-10 h-10 flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      className="w-full h-full object-cover rounded"
+                    />
+                  </div>
                 )}
                 {file.type !== 'image' && (
                   <File className="w-10 h-10 text-gray-500 flex-shrink-0 p-2" />

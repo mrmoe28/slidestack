@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
 import { auth } from '@/lib/auth'
 import { db, mediaFiles } from '@slideshow/db'
 
 export const dynamic = 'force-dynamic'
 
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads')
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 
 const ALLOWED_IMAGE_TYPES = [
@@ -92,19 +89,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create uploads directory if it doesn't exist
-    await mkdir(UPLOAD_DIR, { recursive: true })
-
-    // Generate unique filename
-    const timestamp = Date.now()
-    const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const uniqueFilename = `${timestamp}-${sanitizedFilename}`
-    const filepath = join(UPLOAD_DIR, uniqueFilename)
-
-    // Save file to disk
+    // Convert file to base64
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    await writeFile(filepath, buffer)
+    const base64Data = buffer.toString('base64')
+
+    // Create data URL for immediate use
+    const dataUrl = `data:${file.type};base64,${base64Data}`
 
     // Save to database
     const [mediaFile] = await db
@@ -112,9 +103,11 @@ export async function POST(request: NextRequest) {
       .values({
         projectId,
         type: getMediaType(file.type),
-        url: `/uploads/${uniqueFilename}`,
+        url: dataUrl, // Store data URL for easy retrieval
         filename: file.name,
+        mimeType: file.type,
         size: file.size,
+        data: base64Data,
         order,
       })
       .returning()
@@ -123,7 +116,7 @@ export async function POST(request: NextRequest) {
       success: true,
       file: {
         id: mediaFile.id,
-        url: mediaFile.url,
+        url: mediaFile.url, // Return data URL
         filename: mediaFile.filename,
         size: mediaFile.size,
         type: mediaFile.type,
