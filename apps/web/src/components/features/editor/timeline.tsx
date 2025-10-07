@@ -151,7 +151,8 @@ export function Timeline({ onClipsChange }: TimelineProps) {
           <div className="flex gap-2 overflow-x-auto pb-2">
             {clips.map((clip) => {
               const isTextSlide = 'type' in clip.content && clip.content.type === 'text'
-              const isMediaFile = 'url' in clip.content
+              const textSlide = isTextSlide ? (clip.content as TextSlideData) : null
+              const mediaFile = !isTextSlide ? (clip.content as MediaFile) : null
 
               return (
                 <div
@@ -159,49 +160,49 @@ export function Timeline({ onClipsChange }: TimelineProps) {
                   className="relative flex-shrink-0 w-32 h-24 bg-white border-2 border-gray-300 rounded-lg overflow-hidden group hover:border-indigo-400 transition-colors"
                 >
                   {/* Text Slide */}
-                  {isTextSlide && (
+                  {textSlide && (
                     <div
                       className="w-full h-full flex items-center justify-center p-2"
                       style={{
-                        backgroundColor: clip.content.backgroundColor,
+                        backgroundColor: textSlide.backgroundColor,
                       }}
                     >
                       <div className="text-center">
-                        <Type className="w-6 h-6 mx-auto mb-1" style={{ color: clip.content.textColor }} />
+                        <Type className="w-6 h-6 mx-auto mb-1" style={{ color: textSlide.textColor }} />
                         <p
                           className="text-xs truncate"
                           style={{
-                            color: clip.content.textColor,
-                            fontFamily: clip.content.font,
+                            color: textSlide.textColor,
+                            fontFamily: textSlide.font,
                           }}
                         >
-                          {clip.content.text.substring(0, 20)}
+                          {textSlide.text.substring(0, 20)}
                         </p>
                       </div>
                     </div>
                   )}
 
                   {/* Image Media */}
-                  {isMediaFile && clip.content.type === 'image' && clip.content.url && (
+                  {mediaFile && mediaFile.type === 'image' && mediaFile.url && (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={clip.content.url}
-                        alt={clip.content.name}
+                        src={mediaFile.url}
+                        alt={mediaFile.name}
                         className="w-full h-full object-cover"
                       />
                     </>
                   )}
 
                   {/* Video Media */}
-                  {isMediaFile && clip.content.type === 'video' && (
+                  {mediaFile && mediaFile.type === 'video' && (
                     <div className="w-full h-full flex items-center justify-center bg-gray-900">
                       <VideoIcon className="w-12 h-12 text-white" />
                     </div>
                   )}
 
                   {/* Audio Media */}
-                  {isMediaFile && clip.content.type === 'audio' && (
+                  {mediaFile && mediaFile.type === 'audio' && (
                     <div className="w-full h-full flex items-center justify-center bg-indigo-900">
                       <Music className="w-12 h-12 text-white" />
                     </div>
@@ -222,10 +223,10 @@ export function Timeline({ onClipsChange }: TimelineProps) {
                   {/* Clip Info */}
                   <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1">
                     <p className="text-xs text-white truncate">
-                      {isTextSlide
-                        ? clip.content.text.substring(0, 15)
-                        : isMediaFile
-                        ? clip.content.name
+                      {textSlide
+                        ? textSlide.text.substring(0, 15)
+                        : mediaFile
+                        ? mediaFile.name
                         : 'Unknown'}
                     </p>
                     <p className="text-xs text-gray-300">{clip.duration}s</p>
