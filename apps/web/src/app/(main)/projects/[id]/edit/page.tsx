@@ -5,6 +5,8 @@ import { db, projects, eq, and } from '@slideshow/db'
 import Link from 'next/link'
 import { ArrowLeft, Save, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ProjectEditor } from '@/components/features/editor/project-editor'
+import { MediaUploader } from '@/components/features/editor/media-uploader'
 
 export const metadata: Metadata = {
   title: 'Edit Project - SlideShow',
@@ -38,9 +40,9 @@ export default async function ProjectEditorPage({ params }: PageProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
+      <header className="bg-white border-b shadow-sm px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard">
@@ -49,8 +51,8 @@ export default async function ProjectEditorPage({ params }: PageProps) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-lg font-semibold text-white">{project.title}</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-lg font-semibold text-gray-900">{project.title}</h1>
+            <p className="text-sm text-gray-600">
               {project.description || 'No description'}
             </p>
           </div>
@@ -60,7 +62,7 @@ export default async function ProjectEditorPage({ params }: PageProps) {
             <Save className="w-4 h-4 mr-2" />
             Save
           </Button>
-          <Button size="sm">
+          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
             <Play className="w-4 h-4 mr-2" />
             Render Video
           </Button>
@@ -69,59 +71,86 @@ export default async function ProjectEditorPage({ params }: PageProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Media Library */}
-        <aside className="w-64 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
-          <h2 className="text-sm font-semibold text-white mb-4">Media Library</h2>
-          <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
-            <p className="text-sm text-gray-400 mb-2">No media files yet</p>
-            <Button size="sm" variant="outline">
-              Upload Files
-            </Button>
+        {/* Left Sidebar - Media Library & Editing Tools */}
+        <aside className="w-80 bg-white border-r shadow-sm p-4 overflow-y-auto">
+          <div className="space-y-6">
+            {/* Media Uploader */}
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Media Library</h2>
+              <MediaUploader />
+            </div>
+
+            {/* Slide Editor */}
+            <div className="border-t pt-6">
+              <ProjectEditor projectId={project.id} projectTitle={project.title} />
+            </div>
           </div>
         </aside>
 
         {/* Center - Preview & Timeline */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col bg-gray-100">
           {/* Preview Area */}
-          <div className="flex-1 bg-black flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-[640px] h-[360px] bg-gray-800 rounded-lg flex items-center justify-center mb-4">
-                <p className="text-gray-400">Preview</p>
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="w-full max-w-4xl">
+              <div className="aspect-video bg-white rounded-lg shadow-lg flex items-center justify-center border-2 border-gray-200">
+                <p className="text-gray-400 text-lg">Preview</p>
               </div>
-              <div className="flex items-center justify-center gap-2">
-                <Button size="sm" variant="ghost">
-                  <Play className="w-4 h-4" />
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Button size="sm" variant="outline">
+                  <Play className="w-4 h-4 mr-2" />
+                  Play Preview
                 </Button>
               </div>
             </div>
           </div>
 
           {/* Timeline Area */}
-          <div className="h-48 bg-gray-800 border-t border-gray-700 p-4">
-            <h3 className="text-sm font-semibold text-white mb-2">Timeline</h3>
-            <div className="bg-gray-900 rounded-lg h-32 flex items-center justify-center">
+          <div className="h-56 bg-white border-t shadow-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Timeline</h3>
+            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg h-40 flex items-center justify-center">
               <p className="text-gray-500 text-sm">
-                Drag media files here to build your slideshow
+                Drag slides here to build your slideshow
               </p>
             </div>
           </div>
         </main>
 
         {/* Right Sidebar - Properties */}
-        <aside className="w-64 bg-gray-800 border-l border-gray-700 p-4 overflow-y-auto">
-          <h2 className="text-sm font-semibold text-white mb-4">Properties</h2>
+        <aside className="w-72 bg-white border-l shadow-sm p-4 overflow-y-auto">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Properties</h2>
           <div className="space-y-4">
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Duration</label>
-              <p className="text-sm text-white">0:00</p>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <label className="text-xs text-gray-600 block mb-1 font-medium">Duration</label>
+              <p className="text-lg font-semibold text-gray-900">0:00</p>
             </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Resolution</label>
-              <p className="text-sm text-white">1920x1080</p>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <label className="text-xs text-gray-600 block mb-1 font-medium">Resolution</label>
+              <p className="text-lg font-semibold text-gray-900">1920×1080</p>
             </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">FPS</label>
-              <p className="text-sm text-white">30</p>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <label className="text-xs text-gray-600 block mb-1 font-medium">FPS</label>
+              <p className="text-lg font-semibold text-gray-900">30</p>
+            </div>
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Export Settings</h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Quality</label>
+                  <select className="w-full text-sm border rounded-md px-2 py-1.5">
+                    <option>High (1080p)</option>
+                    <option>Medium (720p)</option>
+                    <option>Low (480p)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Format</label>
+                  <select className="w-full text-sm border rounded-md px-2 py-1.5">
+                    <option>MP4</option>
+                    <option>WebM</option>
+                    <option>AVI</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </aside>
