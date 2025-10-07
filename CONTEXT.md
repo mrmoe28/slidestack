@@ -293,29 +293,38 @@ npm run build
 
 ## 📝 Current State
 
-**Status:** Project initialization in progress
+**Status:** MVP development - Timeline UI enhancement in progress
 
 **Completed:**
 - ✅ CLAUDE.md created with project guidelines
 - ✅ CONTEXT.md created with architecture and tech stack
+- ✅ Next.js 15 project setup with TypeScript and Tailwind
+- ✅ ShadCN UI components configured
+- ✅ Drizzle ORM with Neon Postgres
+- ✅ NextAuth email authentication
+- ✅ Project dashboard UI
+- ✅ File upload functionality (base64 storage)
+- ✅ Basic timeline drag-and-drop
 
 **In Progress:**
-- 🔄 Initial Next.js 15 project setup
-- 🔄 Database schema design
+- 🔄 Enhanced timeline UI with controls, playhead, and timestamps
+- 🔄 No-scroll layout redesign (100vh viewport)
 
 **Next Steps:**
-1. Initialize Next.js 15 project with TypeScript and Tailwind
-2. Install and configure ShadCN UI components
-3. Set up Drizzle ORM with Neon Postgres
-4. Implement NextAuth email authentication
-5. Create basic project dashboard UI
-6. Set up R2/S3 file upload functionality
+1. Add timeline controls (playhead, scrubber, time ruler)
+2. Add zoom controls and transport controls (play, pause)
+3. Implement clip reordering within timeline
+4. Add multi-track support (video, audio, text layers)
+5. Build FFmpeg worker service
+6. Migrate to R2/S3 storage
 
 **Blocked:**
 - None
 
 **Known Issues:**
-- None yet
+- Timeline missing essential controls (playhead, timestamps, zoom)
+- Page requires scrolling to see timeline (poor UX)
+- No visual time ruler or frame-accurate positioning
 
 ---
 
@@ -336,6 +345,45 @@ npm run build
 - User signup/login flow
 - Create project → upload media → render video
 - Download rendered video
+
+---
+
+## 🎨 Timeline UI Design Research (2025-10-07)
+
+**Research Sources:**
+- React Video Editor best practices
+- Timeline scrubber implementations (react-scrubber, tldraw)
+- Professional video editor layouts (DaVinci Resolve, Premiere Pro, Clipchamp)
+
+**Key Findings:**
+
+### Essential Timeline Features
+1. **Playhead/Scrubber**: Visual indicator of current playback position
+2. **Time Ruler**: Timestamps showing seconds/minutes with tick marks
+3. **Zoom Controls**: Adjust timeline granularity (frames vs. seconds)
+4. **Transport Controls**: Play, pause, skip forward/backward
+5. **Multi-track Support**: Separate lanes for video, audio, text
+6. **Frame-accurate Control**: Precise positioning and trimming
+
+### Layout Best Practices
+1. **No-scroll Design**: Use 100vh viewport height with fixed sections
+2. **Stacked Layout**: Preview on top, timeline on bottom
+3. **Vertical Track Stacking**: Multiple tracks stacked vertically (z-order)
+4. **Space Optimization**: Maximize preview size, minimize chrome
+
+### React Implementation Patterns
+1. **TypeScript Types**: Define interfaces for clips, tracks, timeline state
+2. **Event Handlers**: onScrubStart, onScrubChange, onScrubEnd
+3. **State Management**: Use React hooks (useState, useCallback, useEffect)
+4. **Drag & Drop**: Support reordering clips within timeline
+5. **GSAP Integration**: For smooth playhead animations (optional)
+
+### Design Decisions
+- **Layout**: Fixed 100vh height with three sections (header, main, timeline)
+- **Main Area**: Split into left sidebar (tools), center (preview), right sidebar (properties)
+- **Timeline Height**: ~200-250px fixed at bottom
+- **Controls**: Transport controls in timeline header
+- **Time Display**: HH:MM:SS format with frame numbers
 
 ---
 

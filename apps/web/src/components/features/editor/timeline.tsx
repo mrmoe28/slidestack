@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { X, Play, Type, Music, Video as VideoIcon } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Type, Music, Video as VideoIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface MediaFile {
@@ -39,6 +39,24 @@ interface TimelineProps {
 export function Timeline({ onClipsChange }: TimelineProps) {
   const [clips, setClips] = useState<TimelineClip[]>([])
   const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [zoom, setZoom] = useState(1) // 1 = 1 second per 50px
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const playheadRef = useRef<HTMLDivElement>(null)
+
+  const PIXELS_PER_SECOND = 50 * zoom
+
+  const getTotalDuration = useCallback(() => {
+    return clips.reduce((total, clip) => total + clip.duration, 0)
+  }, [clips])
+
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    const frames = Math.floor((seconds % 1) * 30) // 30 fps
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`
+  }, [])
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -104,138 +122,283 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     }
   }, [clips, onClipsChange])
 
-  const getTotalDuration = () => {
-    return clips.reduce((total, clip) => total + clip.duration, 0)
-  }
+  const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!timelineRef.current) return
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+    const rect = timelineRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const time = x / PIXELS_PER_SECOND
+    setCurrentTime(Math.max(0, Math.min(time, getTotalDuration())))
+  }, [PIXELS_PER_SECOND, getTotalDuration])
+
+  const togglePlayPause = useCallback(() => {
+    setIsPlaying(!isPlaying)
+  }, [isPlaying])
+
+  const skipBackward = useCallback(() => {
+    setCurrentTime(Math.max(0, currentTime - 1))
+  }, [currentTime])
+
+  const skipForward = useCallback(() => {
+    setCurrentTime(Math.min(getTotalDuration(), currentTime + 1))
+  }, [currentTime, getTotalDuration])
+
+  const handleZoomIn = useCallback(() => {
+    setZoom(Math.min(4, zoom * 1.5))
+  }, [zoom])
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(Math.max(0.25, zoom / 1.5))
+  }, [zoom])
+
+  // Animation loop for playback
+  useEffect(() => {
+    if (!isPlaying) return
+
+    const interval = setInterval(() => {
+      setCurrentTime((prev) => {
+        const next = prev + 0.033 // ~30fps
+        if (next >= getTotalDuration()) {
+          setIsPlaying(false)
+          return getTotalDuration()
+        }
+        return next
+      })
+    }, 33)
+
+    return () => clearInterval(interval)
+  }, [isPlaying, getTotalDuration])
+
+  // Generate time ruler ticks
+  const generateTimeRulerTicks = () => {
+    const totalDuration = getTotalDuration()
+    const ticks = []
+    const interval = zoom < 0.5 ? 5 : zoom < 1 ? 2 : 1 // seconds per tick
+
+    for (let i = 0; i <= Math.ceil(totalDuration); i += interval) {
+      ticks.push(
+        <div
+          key={i}
+          className="absolute flex flex-col items-center"
+          style={{ left: `${i * PIXELS_PER_SECOND}px` }}
+        >
+          <div className="w-px h-2 bg-gray-500" />
+          <span className="text-xs text-gray-400 mt-0.5">{formatTime(i)}</span>
+        </div>
+      )
+    }
+    return ticks
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Timeline {clips.length > 0 && `(${clips.length} clips, ${formatDuration(getTotalDuration())})`}
-        </h3>
-        {clips.length > 0 && (
-          <Button size="sm" variant="outline">
-            <Play className="w-3 h-3 mr-1" />
-            Preview
-          </Button>
-        )}
+    <div className="h-full flex flex-col bg-gray-800">
+      {/* Timeline Header - Controls */}
+      <div className="flex-shrink-0 bg-gray-900 border-b border-gray-700 px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {/* Transport Controls */}
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              onClick={skipBackward}
+            >
+              <SkipBack className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              onClick={togglePlayPause}
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              onClick={skipForward}
+            >
+              <SkipForward className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Time Display */}
+          <div className="text-sm font-mono text-gray-300 bg-gray-800 px-3 py-1 rounded border border-gray-700">
+            {formatTime(currentTime)} / {formatTime(getTotalDuration())}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              onClick={handleZoomOut}
+            >
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+            <span className="text-xs text-gray-400 w-12 text-center">{Math.round(zoom * 100)}%</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              onClick={handleZoomIn}
+            >
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="text-sm text-gray-400">
+            {clips.length} {clips.length === 1 ? 'clip' : 'clips'}
+          </div>
+        </div>
       </div>
 
-      <div
-        className={`flex-1 border-2 border-dashed rounded-lg p-4 transition-all ${
-          isDraggingOver
-            ? 'border-indigo-500 bg-indigo-50'
-            : clips.length === 0
-            ? 'border-gray-300'
-            : 'border-gray-200'
-        }`}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        {clips.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <p className={`text-sm ${isDraggingOver ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>
-              {isDraggingOver ? 'Drop here to add to timeline' : 'Drag media files here to build your slideshow'}
-            </p>
+      {/* Timeline Canvas */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Track Labels */}
+        <div className="flex-shrink-0 w-24 bg-gray-900 border-r border-gray-700">
+          <div className="h-12 flex items-center justify-center border-b border-gray-700">
+            <span className="text-xs text-gray-400 font-medium">TIMELINE</span>
           </div>
-        ) : (
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {clips.map((clip) => {
-              const isTextSlide = 'type' in clip.content && clip.content.type === 'text'
-              const textSlide = isTextSlide ? (clip.content as TextSlideData) : null
-              const mediaFile = !isTextSlide ? (clip.content as MediaFile) : null
+          <div className="h-32 flex items-center justify-center border-b border-gray-700">
+            <span className="text-xs text-gray-400 font-medium">VIDEO</span>
+          </div>
+        </div>
 
-              return (
-                <div
-                  key={clip.id}
-                  className="relative flex-shrink-0 w-32 h-24 bg-white border-2 border-gray-300 rounded-lg overflow-hidden group hover:border-indigo-400 transition-colors"
-                >
-                  {/* Text Slide */}
-                  {textSlide && (
-                    <div
-                      className="w-full h-full flex items-center justify-center p-2"
-                      style={{
-                        backgroundColor: textSlide.backgroundColor,
-                      }}
-                    >
-                      <div className="text-center">
-                        <Type className="w-6 h-6 mx-auto mb-1" style={{ color: textSlide.textColor }} />
-                        <p
-                          className="text-xs truncate"
-                          style={{
-                            color: textSlide.textColor,
-                            fontFamily: textSlide.font,
+        {/* Timeline Content */}
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div className="relative min-w-full h-full">
+            {/* Time Ruler */}
+            <div className="h-12 bg-gray-900 border-b border-gray-700 relative">
+              <div className="absolute inset-0 pl-2">
+                {generateTimeRulerTicks()}
+              </div>
+            </div>
+
+            {/* Video Track */}
+            <div
+              ref={timelineRef}
+              className={`h-32 bg-gray-800 border-b border-gray-700 relative ${
+                isDraggingOver ? 'bg-indigo-900/30 ring-2 ring-indigo-500' : ''
+              }`}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={handleTimelineClick}
+            >
+              {clips.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <p className={`text-sm ${isDraggingOver ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
+                    {isDraggingOver ? 'Drop here to add to timeline' : 'Drag media files here to build your slideshow'}
+                  </p>
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex items-center">
+                  {clips.map((clip, index) => {
+                    const isTextSlide = 'type' in clip.content && clip.content.type === 'text'
+                    const textSlide = isTextSlide ? (clip.content as TextSlideData) : null
+                    const mediaFile = !isTextSlide ? (clip.content as MediaFile) : null
+
+                    // Calculate start position
+                    const startTime = clips.slice(0, index).reduce((sum, c) => sum + c.duration, 0)
+                    const left = startTime * PIXELS_PER_SECOND
+                    const width = clip.duration * PIXELS_PER_SECOND
+
+                    return (
+                      <div
+                        key={clip.id}
+                        className="absolute h-24 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded border-2 border-indigo-500 overflow-hidden group hover:border-indigo-400 transition-all shadow-lg"
+                        style={{
+                          left: `${left}px`,
+                          width: `${width}px`,
+                          top: '8px',
+                        }}
+                      >
+                        {/* Clip Preview */}
+                        <div className="absolute inset-0">
+                          {textSlide && (
+                            <div
+                              className="w-full h-full flex items-center justify-center p-2"
+                              style={{ backgroundColor: textSlide.backgroundColor }}
+                            >
+                              <Type className="w-8 h-8" style={{ color: textSlide.textColor }} />
+                            </div>
+                          )}
+
+                          {mediaFile && mediaFile.type === 'image' && mediaFile.url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={mediaFile.url}
+                              alt={mediaFile.name}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+
+                          {mediaFile && mediaFile.type === 'video' && (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                              <VideoIcon className="w-8 h-8 text-white" />
+                            </div>
+                          )}
+
+                          {mediaFile && mediaFile.type === 'audio' && (
+                            <div className="w-full h-full flex items-center justify-center bg-purple-900">
+                              <Music className="w-8 h-8 text-white" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Clip Info Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+                          <div className="absolute bottom-0 left-0 right-0 p-2">
+                            <p className="text-xs text-white truncate font-medium">
+                              {textSlide
+                                ? textSlide.text.substring(0, 20)
+                                : mediaFile
+                                ? mediaFile.name
+                                : 'Unknown'}
+                            </p>
+                            <p className="text-xs text-gray-300">{clip.duration.toFixed(1)}s</p>
+                          </div>
+                        </div>
+
+                        {/* Remove Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0 bg-red-600 hover:bg-red-700 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeClip(clip.id)
                           }}
                         >
-                          {textSlide.text.substring(0, 20)}
-                        </p>
+                          <X className="w-3 h-3" />
+                        </Button>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Image Media */}
-                  {mediaFile && mediaFile.type === 'image' && mediaFile.url && (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={mediaFile.url}
-                        alt={mediaFile.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </>
-                  )}
-
-                  {/* Video Media */}
-                  {mediaFile && mediaFile.type === 'video' && (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                      <VideoIcon className="w-12 h-12 text-white" />
-                    </div>
-                  )}
-
-                  {/* Audio Media */}
-                  {mediaFile && mediaFile.type === 'audio' && (
-                    <div className="w-full h-full flex items-center justify-center bg-indigo-900">
-                      <Music className="w-12 h-12 text-white" />
-                    </div>
-                  )}
-
-                  {/* Remove Button */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute top-1 right-1 h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
-                      onClick={() => removeClip(clip.id)}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-
-                  {/* Clip Info */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1">
-                    <p className="text-xs text-white truncate">
-                      {textSlide
-                        ? textSlide.text.substring(0, 15)
-                        : mediaFile
-                        ? mediaFile.name
-                        : 'Unknown'}
-                    </p>
-                    <p className="text-xs text-gray-300">{clip.duration}s</p>
-                  </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
+              )}
+
+              {/* Playhead */}
+              <div
+                ref={playheadRef}
+                className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-10"
+                style={{
+                  left: `${currentTime * PIXELS_PER_SECOND}px`,
+                }}
+              >
+                <div className="absolute -top-1 -left-2 w-4 h-4">
+                  <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-red-500" />
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

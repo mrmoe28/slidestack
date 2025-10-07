@@ -42,103 +42,95 @@ export default async function ProjectEditorPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Header - Fixed height */}
+      <header className="flex-shrink-0 bg-white border-b shadow-sm px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard">
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-4 h-4 mr-1.5" />
               Back
             </Link>
           </Button>
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">{project.title}</h1>
-            <p className="text-sm text-gray-600">
-              {project.description || 'No description'}
-            </p>
+          <div className="border-l pl-3">
+            <h1 className="text-base font-semibold text-gray-900">{project.title}</h1>
+            {project.description && (
+              <p className="text-xs text-gray-600">{project.description}</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Save className="w-4 h-4 mr-2" />
+            <Save className="w-4 h-4 mr-1.5" />
             Save
           </Button>
           <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
-            <Play className="w-4 h-4 mr-2" />
+            <Play className="w-4 h-4 mr-1.5" />
             Render Video
           </Button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Content Area - Flexible height */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Sidebar - Media Library & Editing Tools */}
-        <aside className="w-80 bg-white border-r shadow-sm p-4 overflow-y-auto">
-          <div className="space-y-6">
+        <aside className="w-64 flex-shrink-0 bg-white border-r shadow-sm overflow-y-auto">
+          <div className="p-3 space-y-4">
             {/* Media Uploader */}
             <div>
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">Media Library</h2>
+              <h2 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Media Library</h2>
               <MediaUploader projectId={project.id} />
             </div>
 
             {/* Slide Editor */}
-            <div className="border-t pt-6">
+            <div className="border-t pt-4">
               <ProjectEditor projectId={project.id} projectTitle={project.title} />
             </div>
 
             {/* Text Slide Editor */}
-            <div className="border-t pt-6">
+            <div className="border-t pt-4">
               <TextSlideEditor />
             </div>
           </div>
         </aside>
 
-        {/* Center - Preview & Timeline */}
-        <main className="flex-1 flex flex-col bg-gray-100">
-          {/* Preview Area */}
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="w-full max-w-4xl">
-              <div className="aspect-video bg-white rounded-lg shadow-lg flex items-center justify-center border-2 border-gray-200">
-                <p className="text-gray-400 text-lg">Preview</p>
-              </div>
-              <div className="flex items-center justify-center gap-2 mt-4">
-                <Button size="sm" variant="outline">
-                  <Play className="w-4 h-4 mr-2" />
-                  Play Preview
-                </Button>
+        {/* Center - Preview Area */}
+        <main className="flex-1 flex flex-col bg-gray-900 min-w-0">
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="w-full h-full max-w-5xl max-h-full flex items-center justify-center">
+              <div className="w-full aspect-video bg-black rounded-lg shadow-2xl flex items-center justify-center border border-gray-700">
+                <p className="text-gray-500 text-lg">Preview Canvas</p>
               </div>
             </div>
-          </div>
-
-          {/* Timeline Area */}
-          <div className="h-56 bg-white border-t shadow-lg p-4">
-            <Timeline />
           </div>
         </main>
 
         {/* Right Sidebar - Properties */}
-        <aside className="w-72 bg-white border-l shadow-sm p-4 overflow-y-auto">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Properties</h2>
-          <div className="space-y-4">
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <label className="text-xs text-gray-600 block mb-1 font-medium">Duration</label>
-              <p className="text-lg font-semibold text-gray-900">0:00</p>
+        <aside className="w-56 flex-shrink-0 bg-white border-l shadow-sm overflow-y-auto">
+          <div className="p-3 space-y-3">
+            <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Properties</h2>
+
+            <div className="space-y-2">
+              <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                <label className="text-xs text-gray-600 block mb-0.5 font-medium">Duration</label>
+                <p className="text-sm font-semibold text-gray-900">0:00</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                <label className="text-xs text-gray-600 block mb-0.5 font-medium">Resolution</label>
+                <p className="text-sm font-semibold text-gray-900">1920×1080</p>
+              </div>
+              <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                <label className="text-xs text-gray-600 block mb-0.5 font-medium">FPS</label>
+                <p className="text-sm font-semibold text-gray-900">30</p>
+              </div>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <label className="text-xs text-gray-600 block mb-1 font-medium">Resolution</label>
-              <p className="text-lg font-semibold text-gray-900">1920×1080</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <label className="text-xs text-gray-600 block mb-1 font-medium">FPS</label>
-              <p className="text-lg font-semibold text-gray-900">30</p>
-            </div>
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Export Settings</h3>
+
+            <div className="pt-3 border-t">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Export</h3>
               <div className="space-y-2">
                 <div>
                   <label className="text-xs text-gray-600 block mb-1">Quality</label>
-                  <select className="w-full text-sm border rounded-md px-2 py-1.5">
+                  <select className="w-full text-xs border border-gray-300 rounded px-2 py-1.5">
                     <option>High (1080p)</option>
                     <option>Medium (720p)</option>
                     <option>Low (480p)</option>
@@ -146,7 +138,7 @@ export default async function ProjectEditorPage({ params }: PageProps) {
                 </div>
                 <div>
                   <label className="text-xs text-gray-600 block mb-1">Format</label>
-                  <select className="w-full text-sm border rounded-md px-2 py-1.5">
+                  <select className="w-full text-xs border border-gray-300 rounded px-2 py-1.5">
                     <option>MP4</option>
                     <option>WebM</option>
                     <option>AVI</option>
@@ -156,6 +148,11 @@ export default async function ProjectEditorPage({ params }: PageProps) {
             </div>
           </div>
         </aside>
+      </div>
+
+      {/* Timeline Area - Fixed height at bottom */}
+      <div className="flex-shrink-0 h-64 bg-gray-800 border-t border-gray-700">
+        <Timeline />
       </div>
     </div>
   )
