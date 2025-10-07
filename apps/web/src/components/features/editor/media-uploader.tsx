@@ -195,7 +195,12 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
             {files.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-2 p-2 bg-white border rounded-lg hover:bg-gray-50"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/json', JSON.stringify(file))
+                  e.dataTransfer.effectAllowed = 'copy'
+                }}
+                className="flex items-center gap-2 p-2 bg-white border rounded-lg hover:bg-gray-50 cursor-move"
               >
                 {file.type === 'image' && file.url && (
                   <div className="w-10 h-10 flex-shrink-0">

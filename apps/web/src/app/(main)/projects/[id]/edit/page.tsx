@@ -7,6 +7,8 @@ import { ArrowLeft, Save, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ProjectEditor } from '@/components/features/editor/project-editor'
 import { MediaUploader } from '@/components/features/editor/media-uploader'
+import { Timeline } from '@/components/features/editor/timeline'
+import { TextSlideEditor } from '@/components/features/editor/text-slide-editor'
 
 export const metadata: Metadata = {
   title: 'Edit Project - SlideShow',
@@ -84,6 +86,11 @@ export default async function ProjectEditorPage({ params }: PageProps) {
             <div className="border-t pt-6">
               <ProjectEditor projectId={project.id} projectTitle={project.title} />
             </div>
+
+            {/* Text Slide Editor */}
+            <div className="border-t pt-6">
+              <TextSlideEditor />
+            </div>
           </div>
         </aside>
 
@@ -106,12 +113,7 @@ export default async function ProjectEditorPage({ params }: PageProps) {
 
           {/* Timeline Area */}
           <div className="h-56 bg-white border-t shadow-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Timeline</h3>
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg h-40 flex items-center justify-center">
-              <p className="text-gray-500 text-sm">
-                Drag slides here to build your slideshow
-              </p>
-            </div>
+            <Timeline />
           </div>
         </main>
 
