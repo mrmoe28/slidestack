@@ -49,7 +49,7 @@ export function LoginForm() {
           description: 'We sent you a magic link to sign in.',
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Something went wrong. Please try again.',
@@ -65,7 +65,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
         <CardDescription>
-          Enter your email address and we'll send you a magic link
+          Enter your email address and we&apos;ll send you a magic link
         </CardDescription>
       </CardHeader>
       <CardContent>

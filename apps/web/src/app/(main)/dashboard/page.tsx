@@ -1,7 +1,13 @@
 import { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Video, Clock, CheckCircle } from 'lucide-react'
+import { auth } from '@/lib/auth'
+import { db, projects } from '@slideshow/db'
+import { eq, desc } from 'drizzle-orm'
+import { NewProjectDialog } from '@/components/features/projects/new-project-dialog'
+import { ProjectCard } from '@/components/features/projects/project-card'
 
 export const metadata: Metadata = {
   title: 'Dashboard - SlideShow',
@@ -9,23 +15,18 @@ export const metadata: Metadata = {
 }
 
 export default async function DashboardPage() {
-  // TODO: Fetch user's projects from database
-  const projects = [
-    {
-      id: '1',
-      title: 'Summer Vacation 2024',
-      status: 'completed',
-      duration: '2:30',
-      createdAt: new Date('2024-08-15'),
-    },
-    {
-      id: '2',
-      title: 'Birthday Party',
-      status: 'processing',
-      duration: '1:45',
-      createdAt: new Date('2024-09-20'),
-    },
-  ]
+  const session = await auth()
+
+  if (!session?.user?.id) {
+    redirect('/login')
+  }
+
+  // Fetch user's projects from database
+  const userProjects = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.userId, session.user.id))
+    .orderBy(desc(projects.createdAt))
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,10 +37,7 @@ export default async function DashboardPage() {
             <h1 className="text-2xl font-bold text-gray-900">SlideShow</h1>
             <p className="text-sm text-gray-600">Create amazing video slideshows</p>
           </div>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Button>
+          <NewProjectDialog />
         </div>
       </header>
 
@@ -53,7 +51,7 @@ export default async function DashboardPage() {
               <Video className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{projects.length}</div>
+              <div className="text-2xl font-bold">{userProjects.length}</div>
               <p className="text-xs text-muted-foreground">All time</p>
             </CardContent>
           </Card>
@@ -65,7 +63,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {projects.filter((p) => p.status === 'processing').length}
+                {userProjects.filter((p) => p.status === 'processing').length}
               </div>
               <p className="text-xs text-muted-foreground">Currently rendering</p>
             </CardContent>
@@ -78,7 +76,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {projects.filter((p) => p.status === 'completed').length}
+                {userProjects.filter((p) => p.status === 'completed').length}
               </div>
               <p className="text-xs text-muted-foreground">Ready to download</p>
             </CardContent>
@@ -94,59 +92,26 @@ export default async function DashboardPage() {
             </Button>
           </div>
 
-          {projects.length === 0 ? (
+          {userProjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <Video className="h-16 w-16 text-gray-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No projects yet</h3>
                 <p className="text-gray-600 mb-6">Get started by creating your first slideshow</p>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Project
-                </Button>
+                <NewProjectDialog
+                  trigger={
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Your First Project
+                    </Button>
+                  }
+                />
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4">
-              {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{project.title}</CardTitle>
-                        <CardDescription>
-                          Created {project.createdAt.toLocaleDateString()} • Duration: {project.duration}
-                        </CardDescription>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {project.status === 'completed' ? (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Completed
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            <Clock className="w-3 h-3 mr-1" />
-                            Processing
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        Edit
-                      </Button>
-                      {project.status === 'completed' && (
-                        <Button size="sm">Download</Button>
-                      )}
-                      <Button size="sm" variant="ghost">
-                        Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              {userProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
               ))}
             </div>
           )}
