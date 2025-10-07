@@ -76,7 +76,7 @@ export function AudioLibrary() {
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
 
-  const handlePlayPause = (track: AudioTrack) => {
+  const handlePlayPause = async (track: AudioTrack) => {
     if (playingTrackId === track.id) {
       // Pause current track
       audioElement?.pause()
@@ -84,17 +84,35 @@ export function AudioLibrary() {
       setAudioElement(null)
     } else {
       // Stop previous track if any
-      audioElement?.pause()
+      if (audioElement) {
+        audioElement.pause()
+        audioElement.currentTime = 0
+      }
 
       // Play new track
       const audio = new Audio(track.url)
       audio.volume = 0.5 // Set to 50% volume for preview
-      audio.play()
-      setAudioElement(audio)
-      setPlayingTrackId(track.id)
 
-      // Reset when track ends
-      audio.onended = () => {
+      try {
+        // Wait for audio to be ready and play
+        await audio.play()
+        setAudioElement(audio)
+        setPlayingTrackId(track.id)
+
+        // Reset when track ends
+        audio.onended = () => {
+          setPlayingTrackId(null)
+          setAudioElement(null)
+        }
+
+        // Handle errors during playback
+        audio.onerror = () => {
+          console.error('Audio playback error:', track.url)
+          setPlayingTrackId(null)
+          setAudioElement(null)
+        }
+      } catch (error) {
+        console.error('Failed to play audio:', error)
         setPlayingTrackId(null)
         setAudioElement(null)
       }
