@@ -28,12 +28,18 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
     if (filesToUpload.length === 0) return
 
     setUploading(true)
+    console.log('[MediaUploader] Starting upload of', filesToUpload.length, 'files')
 
     try {
       const uploadedFiles: MediaFile[] = []
 
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i]
+        console.log('[MediaUploader] Uploading file:', {
+          name: file.name,
+          type: file.type,
+          size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+        })
 
         // Create FormData for upload
         const formData = new FormData()
@@ -42,17 +48,22 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
         formData.append('order', String(files.length + i))
 
         // Upload to API
+        console.log('[MediaUploader] Sending request to /api/upload...')
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         })
 
+        console.log('[MediaUploader] Response status:', response.status)
+
         if (!response.ok) {
           const error = await response.json()
+          console.error('[MediaUploader] Upload failed:', error)
           throw new Error(error.error || 'Upload failed')
         }
 
         const result = await response.json()
+        console.log('[MediaUploader] Upload successful:', result.file.id)
 
         const uploadedFile: MediaFile = {
           id: result.file.id,
@@ -71,13 +82,14 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
       }
 
       setFiles([...files, ...uploadedFiles])
+      console.log('[MediaUploader] All uploads complete')
 
       toast({
         title: 'Upload successful',
         description: `${uploadedFiles.length} file(s) uploaded successfully`,
       })
     } catch (error) {
-      console.error('Upload error:', error)
+      console.error('[MediaUploader] Upload error:', error)
       toast({
         title: 'Upload failed',
         description: error instanceof Error ? error.message : 'Failed to upload files. Please try again.',
@@ -181,7 +193,7 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
             Videos (MP4, WebM, MOV) • Audio (MP3, WAV)
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            Max file size: 100MB
+            Max file size: 500MB
           </p>
         </label>
       </div>

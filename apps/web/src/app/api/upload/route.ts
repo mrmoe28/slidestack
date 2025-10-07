@@ -4,7 +4,16 @@ import { db, mediaFiles } from '@slideshow/db'
 
 export const dynamic = 'force-dynamic'
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
+// Next.js API route config - increase body size limit
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '500mb',
+    },
+  },
+}
+
+const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
 
 const ALLOWED_IMAGE_TYPES = [
   'image/jpeg',
@@ -45,28 +54,40 @@ function getMediaType(mimeType: string): 'image' | 'video' | 'audio' {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[Upload] Starting file upload...')
+
     const session = await auth()
 
     if (!session?.user?.id) {
+      console.log('[Upload] Unauthorized - no session')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
+    console.log('[Upload] Parsing form data...')
     const formData = await request.formData()
     const file = formData.get('file') as File
     const projectId = formData.get('projectId') as string
     const order = parseInt(formData.get('order') as string || '0')
 
     if (!file) {
+      console.log('[Upload] No file provided')
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
       )
     }
 
+    console.log('[Upload] File received:', {
+      name: file.name,
+      type: file.type,
+      size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+    })
+
     if (!projectId) {
+      console.log('[Upload] No project ID provided')
       return NextResponse.json(
         { error: 'Project ID is required' },
         { status: 400 }
@@ -75,6 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Validate file type
     if (!ALL_ALLOWED_TYPES.includes(file.type)) {
+      console.log('[Upload] Invalid file type:', file.type)
       return NextResponse.json(
         { error: `File type ${file.type} is not supported. Allowed types: images (jpg, png, gif, webp, svg), videos (mp4, webm, mov, avi), audio (mp3, wav, ogg)` },
         { status: 400 }
@@ -83,20 +105,25 @@ export async function POST(request: NextRequest) {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
+      console.log('[Upload] File too large:', file.size)
       return NextResponse.json(
         { error: `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit` },
         { status: 400 }
       )
     }
 
+    console.log('[Upload] Converting to base64...')
     // Convert file to base64
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const base64Data = buffer.toString('base64')
 
+    console.log('[Upload] Base64 conversion complete, size:', `${(base64Data.length / 1024 / 1024).toFixed(2)}MB`)
+
     // Create data URL for immediate use
     const dataUrl = `data:${file.type};base64,${base64Data}`
 
+    console.log('[Upload] Saving to database...')
     // Save to database
     const [mediaFile] = await db
       .insert(mediaFiles)
@@ -112,6 +139,8 @@ export async function POST(request: NextRequest) {
       })
       .returning()
 
+    console.log('[Upload] Upload complete:', mediaFile.id)
+
     return NextResponse.json({
       success: true,
       file: {
@@ -123,9 +152,9 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('[Upload] Upload error:', error)
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: error instanceof Error ? error.message : 'Failed to upload file' },
       { status: 500 }
     )
   }
