@@ -1,29 +1,27 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { LoginForm } from '@/components/features/auth/login-form'
+import { SignupForm } from '@/components/features/auth/signup-form'
 
 export const metadata: Metadata = {
-  title: 'Login - SlideShow',
-  description: 'Sign in to your SlideShow account',
+  title: 'Sign Up - SlideShow',
+  description: 'Create your SlideShow account',
 }
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">SlideShow</h1>
-          <p className="text-gray-600">
-            Sign in to your account
-          </p>
+          <p className="text-gray-600">Create amazing video slideshows</p>
         </div>
 
-        <LoginForm />
+        <SignupForm />
 
         <p className="text-center mt-4 text-sm text-gray-600">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-indigo-600 hover:text-indigo-500 font-semibold">
-            Sign up
+          Already have an account?{' '}
+          <Link href="/login" className="text-indigo-600 hover:text-indigo-500 font-semibold">
+            Sign in
           </Link>
         </p>
       </div>
