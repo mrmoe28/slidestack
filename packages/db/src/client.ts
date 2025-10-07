@@ -5,7 +5,7 @@ import * as schema from './schema'
 const connectionString = process.env.DATABASE_URL
 
 // Allow build to succeed without DATABASE_URL during build time
-// At runtime in production, this will be required
+// Create a mock db for when DATABASE_URL is not available
 let pool: Pool | null = null
 
 if (connectionString) {
@@ -13,8 +13,9 @@ if (connectionString) {
     connectionString,
     ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
   })
-} else if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
-  throw new Error('DATABASE_URL environment variable is required in production')
 }
 
+// Export db - will be null if DATABASE_URL is not set
+// This allows the app to build and deploy, but database operations will fail
+// until DATABASE_URL is configured in environment variables
 export const db = pool ? drizzle(pool, { schema }) : (null as any)
