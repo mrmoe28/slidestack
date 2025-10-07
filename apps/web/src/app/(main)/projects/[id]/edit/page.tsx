@@ -95,11 +95,11 @@ export default async function ProjectEditorPage({ params }: PageProps) {
         </aside>
 
         {/* Center - Preview Area */}
-        <main className="flex-1 flex flex-col bg-gray-900 min-w-0">
+        <main className="flex-1 flex flex-col bg-gray-50 min-w-0">
           <div className="flex-1 flex items-center justify-center p-6">
             <div className="w-full h-full max-w-5xl max-h-full flex items-center justify-center">
-              <div className="w-full aspect-video bg-black rounded-lg shadow-2xl flex items-center justify-center border border-gray-700">
-                <p className="text-gray-500 text-lg">Preview Canvas</p>
+              <div id="preview-canvas" className="w-full aspect-video bg-white rounded-lg shadow-xl flex items-center justify-center border-2 border-gray-200">
+                <p className="text-gray-400 text-lg">Preview Canvas</p>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default async function ProjectEditorPage({ params }: PageProps) {
       </div>
 
       {/* Timeline Area - Fixed height at bottom */}
-      <div className="flex-shrink-0 h-64 bg-gray-800 border-t border-gray-700">
+      <div className="flex-shrink-0 h-64 bg-white border-t border-gray-200">
         <Timeline />
       </div>
     </div>

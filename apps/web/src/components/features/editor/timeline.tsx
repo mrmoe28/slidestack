@@ -169,6 +169,74 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     return () => clearInterval(interval)
   }, [isPlaying, getTotalDuration])
 
+  // Update preview canvas based on current time
+  useEffect(() => {
+    const previewCanvas = document.getElementById('preview-canvas')
+    if (!previewCanvas || clips.length === 0) {
+      if (previewCanvas) {
+        previewCanvas.innerHTML = '<p class="text-gray-400 text-lg">Preview Canvas</p>'
+      }
+      return
+    }
+
+    // Find which clip should be showing at current time
+    let accumulatedTime = 0
+    let currentClip: TimelineClip | null = null
+
+    for (const clip of clips) {
+      if (currentTime >= accumulatedTime && currentTime < accumulatedTime + clip.duration) {
+        currentClip = clip
+        break
+      }
+      accumulatedTime += clip.duration
+    }
+
+    if (!currentClip) {
+      previewCanvas.innerHTML = '<p class="text-gray-400 text-lg">End of Timeline</p>'
+      return
+    }
+
+    // Render the current clip
+    const isTextSlide = 'type' in currentClip.content && currentClip.content.type === 'text'
+
+    if (isTextSlide) {
+      const textSlide = currentClip.content as TextSlideData
+      previewCanvas.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center p-8" style="background-color: ${textSlide.backgroundColor}">
+          <p class="text-center font-bold" style="color: ${textSlide.textColor}; font-family: ${textSlide.font}; font-size: ${textSlide.fontSize}px">
+            ${textSlide.text}
+          </p>
+        </div>
+      `
+    } else {
+      const mediaFile = currentClip.content as MediaFile
+
+      if (mediaFile.type === 'image') {
+        previewCanvas.innerHTML = `
+          <img src="${mediaFile.url}" alt="${mediaFile.name}" class="w-full h-full object-contain" />
+        `
+      } else if (mediaFile.type === 'video') {
+        previewCanvas.innerHTML = `
+          <div class="w-full h-full flex items-center justify-center bg-gray-900">
+            <svg class="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <p class="text-white mt-4 absolute bottom-8">${mediaFile.name}</p>
+          </div>
+        `
+      } else if (mediaFile.type === 'audio') {
+        previewCanvas.innerHTML = `
+          <div class="w-full h-full flex flex-col items-center justify-center bg-purple-900">
+            <svg class="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+            </svg>
+            <p class="text-white mt-4">${mediaFile.name}</p>
+          </div>
+        `
+      }
+    }
+  }, [currentTime, clips])
+
   // Generate time ruler ticks
   const generateTimeRulerTicks = () => {
     const totalDuration = getTotalDuration()
@@ -182,8 +250,8 @@ export function Timeline({ onClipsChange }: TimelineProps) {
           className="absolute flex flex-col items-center"
           style={{ left: `${i * PIXELS_PER_SECOND}px` }}
         >
-          <div className="w-px h-2 bg-gray-500" />
-          <span className="text-xs text-gray-400 mt-0.5">{formatTime(i)}</span>
+          <div className="w-px h-2 bg-gray-400" />
+          <span className="text-xs text-gray-600 mt-0.5">{formatTime(i)}</span>
         </div>
       )
     }
@@ -191,16 +259,16 @@ export function Timeline({ onClipsChange }: TimelineProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-800">
+    <div className="h-full flex flex-col bg-white border-t border-gray-200">
       {/* Timeline Header - Controls */}
-      <div className="flex-shrink-0 bg-gray-900 border-b border-gray-700 px-4 py-2 flex items-center justify-between">
+      <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* Transport Controls */}
           <div className="flex items-center gap-1">
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
               onClick={skipBackward}
             >
               <SkipBack className="w-4 h-4" />
@@ -208,7 +276,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
               onClick={togglePlayPause}
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -216,7 +284,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
               onClick={skipForward}
             >
               <SkipForward className="w-4 h-4" />
@@ -224,7 +292,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
           </div>
 
           {/* Time Display */}
-          <div className="text-sm font-mono text-gray-300 bg-gray-800 px-3 py-1 rounded border border-gray-700">
+          <div className="text-sm font-mono text-gray-700 bg-white px-3 py-1 rounded border border-gray-300">
             {formatTime(currentTime)} / {formatTime(getTotalDuration())}
           </div>
         </div>
@@ -235,23 +303,23 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
               onClick={handleZoomOut}
             >
               <ZoomOut className="w-4 h-4" />
             </Button>
-            <span className="text-xs text-gray-400 w-12 text-center">{Math.round(zoom * 100)}%</span>
+            <span className="text-xs text-gray-600 w-12 text-center">{Math.round(zoom * 100)}%</span>
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 text-gray-300 hover:text-white hover:bg-gray-700"
+              className="h-8 w-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
               onClick={handleZoomIn}
             >
               <ZoomIn className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-gray-600">
             {clips.length} {clips.length === 1 ? 'clip' : 'clips'}
           </div>
         </div>
@@ -260,12 +328,12 @@ export function Timeline({ onClipsChange }: TimelineProps) {
       {/* Timeline Canvas */}
       <div className="flex-1 flex overflow-hidden">
         {/* Track Labels */}
-        <div className="flex-shrink-0 w-24 bg-gray-900 border-r border-gray-700">
-          <div className="h-12 flex items-center justify-center border-b border-gray-700">
-            <span className="text-xs text-gray-400 font-medium">TIMELINE</span>
+        <div className="flex-shrink-0 w-24 bg-gray-50 border-r border-gray-200">
+          <div className="h-12 flex items-center justify-center border-b border-gray-200">
+            <span className="text-xs text-gray-600 font-medium">TIMELINE</span>
           </div>
-          <div className="h-32 flex items-center justify-center border-b border-gray-700">
-            <span className="text-xs text-gray-400 font-medium">VIDEO</span>
+          <div className="h-32 flex items-center justify-center border-b border-gray-200">
+            <span className="text-xs text-gray-600 font-medium">VIDEO</span>
           </div>
         </div>
 
@@ -273,7 +341,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="relative min-w-full h-full">
             {/* Time Ruler */}
-            <div className="h-12 bg-gray-900 border-b border-gray-700 relative">
+            <div className="h-12 bg-gray-50 border-b border-gray-200 relative">
               <div className="absolute inset-0 pl-2">
                 {generateTimeRulerTicks()}
               </div>
@@ -282,8 +350,8 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             {/* Video Track */}
             <div
               ref={timelineRef}
-              className={`h-32 bg-gray-800 border-b border-gray-700 relative ${
-                isDraggingOver ? 'bg-indigo-900/30 ring-2 ring-indigo-500' : ''
+              className={`h-32 bg-gray-100 border-b border-gray-200 relative ${
+                isDraggingOver ? 'bg-indigo-50 ring-2 ring-indigo-400' : ''
               }`}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
@@ -293,7 +361,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             >
               {clips.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
-                  <p className={`text-sm ${isDraggingOver ? 'text-indigo-400 font-medium' : 'text-gray-500'}`}>
+                  <p className={`text-sm ${isDraggingOver ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>
                     {isDraggingOver ? 'Drop here to add to timeline' : 'Drag media files here to build your slideshow'}
                   </p>
                 </div>
