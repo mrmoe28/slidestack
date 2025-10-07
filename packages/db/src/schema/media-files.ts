@@ -1,8 +1,8 @@
 import { pgTable, text, timestamp, uuid, bigint, integer, real } from 'drizzle-orm/pg-core'
 import { projects } from './projects'
 
-export type MediaType = 'image' | 'video' | 'audio' | 'text'
-export type TimelineTrack = 'video' | 'audio' | 'overlay'
+export type MediaType = 'image' | 'video' | 'audio'
+export type TimelineTrack = 'video' | 'audio'
 
 export const mediaFiles = pgTable('media_files', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -16,10 +16,8 @@ export const mediaFiles = pgTable('media_files', {
   mimeType: text('mime_type').notNull(), // Original MIME type
   size: bigint('size', { mode: 'number' }).notNull(),
   data: text('data').notNull(), // Base64 encoded file data
-  duration: real('duration'), // seconds for video/audio/text slides
+  duration: real('duration'), // seconds for video/audio
   order: integer('order').notNull(), // Order within the track
-  textContent: text('text_content'), // For text slides
-  textStyles: text('text_styles'), // JSON string for text styling (font, color, etc.)
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

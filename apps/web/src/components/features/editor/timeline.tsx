@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Type, Music, Video as VideoIcon, Image as ImageIcon } from 'lucide-react'
+import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 
 interface MediaFile {
   id: string
@@ -10,27 +11,17 @@ interface MediaFile {
   size: number
   type: string
   url: string
+  duration?: number
 }
 
-interface TextSlideData {
-  id: string
-  type: 'text'
-  text: string
-  font: string
-  fontSize: number
-  textColor: string
-  backgroundColor: string
-  duration: number
-}
-
-type ClipContent = MediaFile | TextSlideData
+type ClipContent = MediaFile
 
 interface TimelineClip {
   id: string
   content: ClipContent
   duration: number
   order: number
-  track: 'video' | 'audio' | 'overlay'
+  track: 'video' | 'audio'
 }
 
 interface TimelineProps {
@@ -43,6 +34,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [zoom, setZoom] = useState(1)
+  const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   const PIXELS_PER_SECOND = 50 * zoom
@@ -59,11 +51,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`
   }, [])
 
-  const getTrackForContent = (content: ClipContent): 'video' | 'audio' | 'overlay' => {
-    if ('type' in content) {
-      if (content.type === 'text') return 'overlay'
-    }
-
+  const getTrackForContent = (content: ClipContent): 'video' | 'audio' => {
     const mediaFile = content as MediaFile
     if (mediaFile.type === 'audio') return 'audio'
     if (mediaFile.type === 'image' || mediaFile.type === 'video') return 'video'
@@ -88,7 +76,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     e.stopPropagation()
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, _targetTrack: 'video' | 'audio' | 'overlay') => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, _targetTrack: 'video' | 'audio') => {
     e.preventDefault()
     e.stopPropagation()
     setIsDraggingOver(null)
@@ -99,12 +87,11 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
       const content: ClipContent = JSON.parse(data)
 
-      // Content type ALWAYS determines the track (images→video, text→overlay, audio→audio)
+      // Content type ALWAYS determines the track (images→video, audio→audio)
       const finalTrack = getTrackForContent(content)
 
-      const duration = 'duration' in content && content.type === 'text'
-        ? content.duration
-        : 3
+      // Use duration from content if available, otherwise default to 3 seconds for images
+      const duration = content.duration || 3
 
       const trackClips = clips.filter(c => c.track === finalTrack)
 
@@ -137,13 +124,45 @@ export function Timeline({ onClipsChange }: TimelineProps) {
   }, [clips, onClipsChange])
 
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!timelineRef.current) return
+    if (!timelineRef.current || isDraggingPlayhead) return
 
     const rect = timelineRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
     const time = x / PIXELS_PER_SECOND
     setCurrentTime(Math.max(0, Math.min(time, getTotalDuration())))
-  }, [PIXELS_PER_SECOND, getTotalDuration])
+  }, [PIXELS_PER_SECOND, getTotalDuration, isDraggingPlayhead])
+
+  const handlePlayheadMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsDraggingPlayhead(true)
+    setIsPlaying(false)
+  }, [])
+
+  const handlePlayheadDrag = useCallback((e: MouseEvent) => {
+    if (!isDraggingPlayhead || !timelineRef.current) return
+
+    const rect = timelineRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const time = x / PIXELS_PER_SECOND
+    setCurrentTime(Math.max(0, Math.min(time, getTotalDuration())))
+  }, [isDraggingPlayhead, PIXELS_PER_SECOND, getTotalDuration])
+
+  const handlePlayheadMouseUp = useCallback(() => {
+    setIsDraggingPlayhead(false)
+  }, [])
+
+  // Handle playhead dragging
+  useEffect(() => {
+    if (!isDraggingPlayhead) return
+
+    window.addEventListener('mousemove', handlePlayheadDrag)
+    window.addEventListener('mouseup', handlePlayheadMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handlePlayheadDrag)
+      window.removeEventListener('mouseup', handlePlayheadMouseUp)
+    }
+  }, [isDraggingPlayhead, handlePlayheadDrag, handlePlayheadMouseUp])
 
   const togglePlayPause = useCallback(() => {
     setIsPlaying(!isPlaying)
@@ -189,9 +208,8 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     if (!previewCanvas) return
 
     const videoClips = clips.filter(c => c.track === 'video').sort((a, b) => a.order - b.order)
-    const overlayClips = clips.filter(c => c.track === 'overlay').sort((a, b) => a.order - b.order)
 
-    if (videoClips.length === 0 && overlayClips.length === 0) {
+    if (videoClips.length === 0) {
       previewCanvas.innerHTML = '<p class="text-gray-400 text-lg">Preview Canvas</p>'
       return
     }
@@ -219,9 +237,11 @@ export function Timeline({ onClipsChange }: TimelineProps) {
       previewCanvas.innerHTML = `
         <img src="${mediaFile.url}" alt="${mediaFile.name}" class="w-full h-full object-contain" />
       `
+    } else if (mediaFile.type === 'video') {
+      previewCanvas.innerHTML = `
+        <video src="${mediaFile.url}" class="w-full h-full object-contain" controls />
+      `
     }
-
-    // TODO: Overlay text clips on top of video in future update
   }, [currentTime, clips])
 
   // Generate time ruler ticks
@@ -245,13 +265,11 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     return ticks
   }
 
-  const renderTrackClips = (track: 'video' | 'audio' | 'overlay') => {
+  const renderTrackClips = (track: 'video' | 'audio') => {
     const trackClips = clips.filter(c => c.track === track).sort((a, b) => a.order - b.order)
 
     return trackClips.map((clip, index) => {
-      const isTextSlide = 'type' in clip.content && clip.content.type === 'text'
-      const textSlide = isTextSlide ? (clip.content as TextSlideData) : null
-      const mediaFile = !isTextSlide ? (clip.content as MediaFile) : null
+      const mediaFile = clip.content as MediaFile
 
       const startTime = trackClips.slice(0, index).reduce((sum, c) => sum + c.duration, 0)
       const left = startTime * PIXELS_PER_SECOND
@@ -260,39 +278,53 @@ export function Timeline({ onClipsChange }: TimelineProps) {
       return (
         <div
           key={clip.id}
-          className="absolute h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded border border-indigo-400 overflow-hidden group hover:border-indigo-300 transition-all shadow-md"
+          className="absolute h-16 bg-gray-800 rounded border-2 border-gray-600 overflow-hidden group hover:border-blue-400 transition-all shadow-lg"
           style={{
             left: `${left}px`,
             width: `${width}px`,
             top: '8px',
           }}
         >
-          <div className="absolute inset-0 flex items-center justify-center">
-            {textSlide && <Type className="w-6 h-6 text-white" />}
-            {mediaFile && mediaFile.type === 'image' && <ImageIcon className="w-6 h-6 text-white" />}
-            {mediaFile && mediaFile.type === 'video' && <VideoIcon className="w-6 h-6 text-white" />}
-            {mediaFile && mediaFile.type === 'audio' && <Music className="w-6 h-6 text-white" />}
-          </div>
+          {/* Thumbnail background */}
+          {mediaFile.type === 'image' && (
+            <Image
+              src={mediaFile.url}
+              alt={mediaFile.name}
+              fill
+              className="object-cover opacity-70"
+              unoptimized
+            />
+          )}
+          {mediaFile.type === 'video' && (
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center">
+              <VideoIcon className="w-8 h-8 text-white" />
+            </div>
+          )}
+          {mediaFile.type === 'audio' && (
+            <div className="absolute inset-0 bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center">
+              <Music className="w-8 h-8 text-white" />
+            </div>
+          )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent">
+          {/* Info overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
             <div className="absolute bottom-0 left-0 right-0 p-1.5">
-              <p className="text-xs text-white truncate font-medium">
-                {textSlide ? textSlide.text.substring(0, 15) : mediaFile ? mediaFile.name : 'Unknown'}
-              </p>
-              <p className="text-xs text-gray-200">{clip.duration.toFixed(1)}s</p>
+              <p className="text-xs text-white truncate font-medium">{mediaFile.name}</p>
+              <p className="text-xs text-gray-300">{clip.duration.toFixed(1)}s</p>
             </div>
           </div>
 
+          {/* Remove button */}
           <Button
             variant="ghost"
             size="sm"
-            className="absolute top-0.5 right-0.5 h-5 w-5 p-0 bg-red-600 hover:bg-red-700 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-0.5 right-0.5 h-6 w-6 p-0 bg-red-600 hover:bg-red-700 text-white opacity-0 group-hover:opacity-100 transition-opacity rounded"
             onClick={(e) => {
               e.stopPropagation()
               removeClip(clip.id)
             }}
           >
-            <X className="w-3 h-3" />
+            <X className="w-4 h-4" />
           </Button>
         </div>
       )
@@ -347,12 +379,6 @@ export function Timeline({ onClipsChange }: TimelineProps) {
           </div>
           <div className="h-20 flex items-center justify-center border-b border-gray-200">
             <div className="flex flex-col items-center gap-1">
-              <Type className="w-4 h-4 text-indigo-600" />
-              <span className="text-xs text-gray-700 font-medium">OVERLAY</span>
-            </div>
-          </div>
-          <div className="h-20 flex items-center justify-center border-b border-gray-200">
-            <div className="flex flex-col items-center gap-1">
               <VideoIcon className="w-4 h-4 text-blue-600" />
               <span className="text-xs text-gray-700 font-medium">VIDEO</span>
             </div>
@@ -371,23 +397,6 @@ export function Timeline({ onClipsChange }: TimelineProps) {
             {/* Time Ruler */}
             <div className="h-10 bg-gray-50 border-b border-gray-200 relative">
               <div className="absolute inset-0 pl-2">{generateTimeRulerTicks()}</div>
-            </div>
-
-            {/* Overlay Track */}
-            <div
-              className={`h-20 bg-purple-50 border-b border-gray-200 relative ${isDraggingOver === 'overlay' ? 'bg-purple-100 ring-2 ring-purple-400' : ''}`}
-              onDragEnter={(e) => handleDragEnter(e, 'overlay')}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, 'overlay')}
-            >
-              {clips.filter(c => c.track === 'overlay').length === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <p className="text-xs text-gray-500 font-medium">📝 Text slides only</p>
-                </div>
-              ) : (
-                <div className="absolute inset-0">{renderTrackClips('overlay')}</div>
-              )}
             </div>
 
             {/* Video Track */}
@@ -425,12 +434,16 @@ export function Timeline({ onClipsChange }: TimelineProps) {
               )}
             </div>
 
-            {/* Playhead */}
+            {/* Playhead - Draggable */}
             <div
-              className="absolute top-10 bottom-0 w-0.5 bg-red-500 pointer-events-none z-20"
+              className="absolute top-10 bottom-0 w-0.5 bg-red-500 z-20 cursor-ew-resize"
               style={{ left: `${currentTime * PIXELS_PER_SECOND}px` }}
+              onMouseDown={handlePlayheadMouseDown}
             >
-              <div className="absolute -top-2 -left-2 w-4 h-4">
+              <div
+                className="absolute -top-2 -left-2 w-4 h-4 cursor-ew-resize"
+                onMouseDown={handlePlayheadMouseDown}
+              >
                 <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-red-500" />
               </div>
             </div>
