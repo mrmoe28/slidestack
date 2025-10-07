@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
@@ -20,34 +22,38 @@ type LoginFormValues = z.infer<typeof loginSchema>
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const router = useRouter()
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
+      password: '',
     },
   })
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     try {
-      const result = await signIn('resend', {
+      const result = await signIn('credentials', {
         email: data.email,
+        password: data.password,
         redirect: false,
-        callbackUrl: '/dashboard',
       })
 
       if (result?.error) {
         toast({
           title: 'Error',
-          description: 'Failed to send magic link. Please try again.',
+          description: 'Invalid email or password. Please try again.',
           variant: 'destructive',
         })
       } else {
         toast({
-          title: 'Check your email',
-          description: 'We sent you a magic link to sign in.',
+          title: 'Success',
+          description: 'You have been signed in successfully.',
         })
+        router.push('/dashboard')
+        router.refresh()
       }
     } catch {
       toast({
@@ -65,7 +71,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
         <CardDescription>
-          Enter your email address and we&apos;ll send you a magic link
+          Enter your email and password to sign in
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -89,8 +95,26 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="••••••••"
+                      type="password"
+                      disabled={isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Sending...' : 'Send magic link'}
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
         </Form>
