@@ -14,12 +14,29 @@ interface AudioTrack {
 }
 
 const AUDIO_TRACKS: AudioTrack[] = [
+  // Energetic & Upbeat
+  {
+    id: 'happy-upbeat-1',
+    name: 'Happy Upbeat',
+    duration: 295,
+    url: '/sample-audio/happy-upbeat-1.mp3',
+    category: 'Upbeat',
+  },
   {
     id: 'soundhelix-1',
     name: 'Upbeat Energy',
-    duration: 359, // ~6 minutes
+    duration: 359,
     url: '/sample-audio/sample-music-1.mp3',
     category: 'Energetic',
+  },
+
+  // Ambient & Calm
+  {
+    id: 'relaxing-calm-1',
+    name: 'Relaxing Calm',
+    duration: 348,
+    url: '/sample-audio/relaxing-calm-1.mp3',
+    category: 'Calm',
   },
   {
     id: 'soundhelix-2',
@@ -34,6 +51,24 @@ const AUDIO_TRACKS: AudioTrack[] = [
     duration: 279,
     url: '/sample-audio/sample-music-3.mp3',
     category: 'Chill',
+  },
+
+  // Corporate & Professional
+  {
+    id: 'corporate-motivational-1',
+    name: 'Corporate Motivational',
+    duration: 281,
+    url: '/sample-audio/corporate-motivational-1.mp3',
+    category: 'Corporate',
+  },
+
+  // Cinematic & Epic
+  {
+    id: 'cinematic-epic-1',
+    name: 'Cinematic Epic',
+    duration: 423,
+    url: '/sample-audio/cinematic-epic-1.mp3',
+    category: 'Cinematic',
   },
 ]
 

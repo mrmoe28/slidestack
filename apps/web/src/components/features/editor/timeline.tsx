@@ -164,6 +164,37 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     }
   }, [isDraggingPlayhead, handlePlayheadDrag, handlePlayheadMouseUp])
 
+  // Listen for audio track selection from AudioLibrary
+  useEffect(() => {
+    const handleAudioTrackSelected = (event: CustomEvent) => {
+      const mediaFile = event.detail as MediaFile
+
+      // Get current audio clips to determine order
+      const audioClips = clips.filter(c => c.track === 'audio')
+
+      const newClip: TimelineClip = {
+        id: `clip-${Date.now()}`,
+        content: mediaFile,
+        duration: mediaFile.duration || 60, // Default to 60s if no duration
+        order: audioClips.length,
+        track: 'audio',
+      }
+
+      const updatedClips = [...clips, newClip]
+      setClips(updatedClips)
+
+      if (onClipsChange) {
+        onClipsChange(updatedClips)
+      }
+    }
+
+    window.addEventListener('audioTrackSelected', handleAudioTrackSelected as EventListener)
+
+    return () => {
+      window.removeEventListener('audioTrackSelected', handleAudioTrackSelected as EventListener)
+    }
+  }, [clips, onClipsChange])
+
   const togglePlayPause = useCallback(() => {
     setIsPlaying(!isPlaying)
   }, [isPlaying])
