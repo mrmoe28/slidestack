@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Save, Play } from 'lucide-react'
+import { ArrowLeft, Save, Play, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ProjectEditorNew } from '@/components/features/editor/project-editor-new'
-import { MediaUploader } from '@/components/features/editor/media-uploader'
-import { Timeline } from '@/components/features/editor/timeline'
-import { PreviewControls } from '@/components/features/editor/preview-controls'
-import { TextEditorPanel } from '@/components/features/editor/text-editor-panel'
 import { toast } from 'sonner'
 import type { TimelineClip, TextContent } from '@/types/timeline'
+
+// Lazy load heavy components
+const ProjectEditorNew = lazy(() => import('@/components/features/editor/project-editor-new').then(m => ({ default: m.ProjectEditorNew })))
+const MediaUploader = lazy(() => import('@/components/features/editor/media-uploader').then(m => ({ default: m.MediaUploader })))
+const Timeline = lazy(() => import('@/components/features/editor/timeline').then(m => ({ default: m.Timeline })))
+const PreviewControls = lazy(() => import('@/components/features/editor/preview-controls').then(m => ({ default: m.PreviewControls })))
+const TextEditorPanel = lazy(() => import('@/components/features/editor/text-editor-panel').then(m => ({ default: m.TextEditorPanel })))
 
 interface ProjectData {
   id: string
@@ -191,12 +193,16 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
             {/* Media Uploader */}
             <div>
               <h2 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Media Library</h2>
-              <MediaUploader projectId={project.id} />
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>}>
+                <MediaUploader projectId={project.id} />
+              </Suspense>
             </div>
 
             {/* Audio Library & Tools */}
             <div className="border-t pt-4">
-              <ProjectEditorNew projectId={project.id} projectTitle={project.title} />
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>}>
+                <ProjectEditorNew projectId={project.id} projectTitle={project.title} />
+              </Suspense>
             </div>
           </div>
         </aside>
@@ -207,7 +213,9 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
             <div className="w-full h-full max-w-5xl max-h-full flex items-center justify-center relative">
               <div id="preview-canvas" className="w-full aspect-video bg-white rounded-lg shadow-xl flex items-center justify-center border-2 border-gray-200 relative">
                 <p className="text-gray-400 text-lg">Preview Canvas</p>
-                <PreviewControls />
+                <Suspense fallback={null}>
+                  <PreviewControls />
+                </Suspense>
               </div>
             </div>
           </div>
@@ -217,10 +225,12 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
         <aside className="w-80 flex-shrink-0 bg-white border-l shadow-sm overflow-y-auto">
           <div className="p-3 space-y-3">
             {selectedClipId && clips.find(c => c.id === selectedClipId)?.content.type === 'text' ? (
-              <TextEditorPanel
-                selectedClip={clips.find(c => c.id === selectedClipId) || null}
-                onUpdate={handleTextUpdate}
-              />
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>}>
+                <TextEditorPanel
+                  selectedClip={clips.find(c => c.id === selectedClipId) || null}
+                  onUpdate={handleTextUpdate}
+                />
+              </Suspense>
             ) : (
               <>
                 <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Properties</h2>
@@ -273,11 +283,13 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
 
       {/* Timeline Area - Fixed height at bottom */}
       <div className="flex-shrink-0 h-64 bg-white border-t border-gray-200">
-        <Timeline
-          onClipsChange={handleClipsChange}
-          selectedClipId={selectedClipId}
-          onClipSelect={handleClipSelect}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>}>
+          <Timeline
+            onClipsChange={handleClipsChange}
+            selectedClipId={selectedClipId}
+            onClipSelect={handleClipSelect}
+          />
+        </Suspense>
       </div>
     </div>
   )

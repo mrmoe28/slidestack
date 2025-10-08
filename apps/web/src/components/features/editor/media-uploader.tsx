@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Upload, File, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -21,46 +21,46 @@ interface MediaUploaderProps {
 export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps) {
   const [files, setFiles] = useState<MediaFile[]>([])
   const [uploading, setUploading] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const { toast } = useToast()
 
-  // Fetch existing media files on mount
-  useEffect(() => {
-    const fetchMediaFiles = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/projects/${projectId}/media`)
+  // Lazy load media files only when needed
+  const loadMediaFiles = useCallback(async () => {
+    if (hasLoaded || loading) return
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch media files')
-        }
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/projects/${projectId}/media`)
 
-        const data = await response.json()
-        const loadedFiles: MediaFile[] = data.files.map((file: any) => ({
-          id: file.id,
-          name: file.filename,
-          size: file.size,
-          type: file.type,
-          url: file.url,
-        }))
-
-        setFiles(loadedFiles)
-      } catch (error) {
-        console.error('Error fetching media files:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to load media files',
-          variant: 'destructive',
-        })
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        throw new Error('Failed to fetch media files')
       }
-    }
 
-    fetchMediaFiles()
+      const data = await response.json()
+      const loadedFiles: MediaFile[] = data.files.map((file: any) => ({
+        id: file.id,
+        name: file.filename,
+        size: file.size,
+        type: file.type,
+        url: file.url,
+      }))
+
+      setFiles(loadedFiles)
+      setHasLoaded(true)
+    } catch (error) {
+      console.error('Error fetching media files:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load media files',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId])
+  }, [projectId, hasLoaded, loading])
 
   const uploadFiles = useCallback(async (filesToUpload: FileList) => {
     if (filesToUpload.length === 0) return
@@ -195,7 +195,7 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onFocus={loadMediaFiles} onMouseEnter={loadMediaFiles}>
       <div
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-all ${
           isDragging
