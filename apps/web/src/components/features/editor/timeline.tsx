@@ -1,28 +1,10 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, ArrowLeftRight } from 'lucide-react'
+import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, ArrowLeftRight, Type, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-
-interface MediaFile {
-  id: string
-  name: string
-  size: number
-  type: string
-  url: string
-  duration?: number
-}
-
-type ClipContent = MediaFile
-
-interface TimelineClip {
-  id: string
-  content: ClipContent
-  duration: number
-  order: number
-  track: 'video' | 'audio'
-}
+import type { TimelineClip, ClipContent, MediaFile, TextContent } from '@/types/timeline'
 
 interface TimelineProps {
   onClipsChange?: (clips: TimelineClip[]) => void
@@ -52,13 +34,47 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`
   }, [])
 
-  const getTrackForContent = (content: ClipContent): 'video' | 'audio' => {
+  const getTrackForContent = (content: ClipContent): 'video' | 'audio' | 'text' => {
+    if (content.type === 'text') return 'text'
+
     const mediaFile = content as MediaFile
     if (mediaFile.type === 'audio') return 'audio'
     if (mediaFile.type === 'image' || mediaFile.type === 'video') return 'video'
 
     return 'video'
   }
+
+  const addTextClip = useCallback(() => {
+    const textClips = clips.filter(c => c.track === 'text')
+
+    const newTextContent: TextContent = {
+      id: `text-${Date.now()}`,
+      type: 'text',
+      text: 'Enter your text here',
+      fontSize: 48,
+      fontFamily: 'Arial',
+      color: '#FFFFFF',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      position: 'center',
+      alignment: 'center',
+      animation: 'fade',
+    }
+
+    const newClip: TimelineClip = {
+      id: `clip-${Date.now()}`,
+      content: newTextContent,
+      duration: 3, // Default 3 seconds
+      order: textClips.length,
+      track: 'text',
+    }
+
+    const updatedClips = [...clips, newClip]
+    setClips(updatedClips)
+
+    if (onClipsChange) {
+      onClipsChange(updatedClips)
+    }
+  }, [clips, onClipsChange])
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>, track: string) => {
     e.preventDefault()
@@ -88,11 +104,11 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
       const content: ClipContent = JSON.parse(data)
 
-      // Content type ALWAYS determines the track (images→video, audio→audio)
+      // Content type ALWAYS determines the track (images→video, audio→audio, text→text)
       const finalTrack = getTrackForContent(content)
 
       // Use duration from content if available, otherwise default to 3 seconds for images
-      const duration = content.duration || 3
+      const duration = content.type === 'text' ? 3 : ((content as MediaFile).duration || 3)
 
       const trackClips = clips.filter(c => c.track === finalTrack)
 
@@ -329,6 +345,50 @@ export function Timeline({ onClipsChange }: TimelineProps) {
         <video src="${mediaFile.url}" class="w-full h-full object-contain" controls />
       `
     }
+
+    // Overlay text clips
+    const textClips = clips.filter(c => c.track === 'text').sort((a, b) => a.order - b.order)
+    textClips.forEach((clip) => {
+      // Calculate text clip timing
+      let textAccumulated = 0
+      const textContent = clip.content as TextContent
+
+      // Check if this text clip should be visible at current time
+      for (const c of textClips) {
+        if (c.id === clip.id) {
+          if (currentTime >= textAccumulated && currentTime < textAccumulated + clip.duration) {
+            // This text should be visible
+            const positionClass =
+              textContent.position === 'top' ? 'top-8' :
+              textContent.position === 'bottom' ? 'bottom-8' :
+              'top-1/2 -translate-y-1/2'
+
+            const alignClass =
+              textContent.alignment === 'left' ? 'text-left' :
+              textContent.alignment === 'right' ? 'text-right' :
+              'text-center'
+
+            const textDiv = document.createElement('div')
+            textDiv.className = `absolute left-0 right-0 ${positionClass} px-8 ${alignClass} z-10`
+            textDiv.innerHTML = `
+              <p style="
+                color: ${textContent.color};
+                font-size: ${textContent.fontSize}px;
+                font-family: ${textContent.fontFamily};
+                background-color: ${textContent.backgroundColor || 'transparent'};
+                padding: 8px 16px;
+                display: inline-block;
+                border-radius: 4px;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+              ">${textContent.text}</p>
+            `
+            previewCanvas.appendChild(textDiv)
+          }
+          break
+        }
+        textAccumulated += c.duration
+      }
+    })
   }, [currentTime, clips])
 
   // Audio playback synchronization
@@ -434,15 +494,90 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     return ticks
   }
 
-  const renderTrackClips = (track: 'video' | 'audio') => {
+  const renderTrackClips = (track: 'video' | 'audio' | 'text') => {
     const trackClips = clips.filter(c => c.track === track).sort((a, b) => a.order - b.order)
 
     return trackClips.map((clip, index) => {
-      const mediaFile = clip.content as MediaFile
-
       const startTime = trackClips.slice(0, index).reduce((sum, c) => sum + c.duration, 0)
       const left = startTime * PIXELS_PER_SECOND
       const width = clip.duration * PIXELS_PER_SECOND
+
+      // Handle text clips
+      if (clip.content.type === 'text') {
+        const textContent = clip.content as TextContent
+        return (
+          <div
+            key={clip.id}
+            className="absolute h-16 bg-gradient-to-br from-orange-600 to-orange-800 rounded border-2 border-orange-500 overflow-hidden group hover:border-orange-300 transition-all shadow-lg"
+            style={{
+              left: `${left}px`,
+              width: `${width}px`,
+              top: '8px',
+            }}
+          >
+            {/* Text icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Type className="w-8 h-8 text-white" />
+            </div>
+
+            {/* Info overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+              <div className="absolute bottom-0 left-0 right-0 p-1.5">
+                <p className="text-xs text-white truncate font-medium">{textContent.text}</p>
+                <p className="text-xs text-gray-300">{clip.duration.toFixed(1)}s</p>
+              </div>
+            </div>
+
+            {/* Editing Tools */}
+            <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  splitClip(clip.id)
+                }}
+                title="Split clip"
+              >
+                <Scissors className="w-3 h-3" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-yellow-600 hover:bg-yellow-700 text-white rounded"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const newDuration = prompt(`Enter new duration (current: ${clip.duration.toFixed(1)}s):`)
+                  if (newDuration) {
+                    trimClip(clip.id, parseFloat(newDuration))
+                  }
+                }}
+                title="Trim clip"
+              >
+                <ArrowLeftRight className="w-3 h-3" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-red-600 hover:bg-red-700 text-white rounded"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removeClip(clip.id)
+                }}
+                title="Delete clip"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )
+      }
+
+      // Handle media clips (video/audio)
+      const mediaFile = clip.content as MediaFile
 
       return (
         <div
@@ -593,6 +728,12 @@ export function Timeline({ onClipsChange }: TimelineProps) {
               <span className="text-xs text-gray-700 font-medium">AUDIO</span>
             </div>
           </div>
+          <div className="h-16 flex items-center justify-center border-b border-gray-200">
+            <div className="flex flex-col items-center gap-1">
+              <Type className="w-4 h-4 text-orange-600" />
+              <span className="text-xs text-gray-700 font-medium">TEXT</span>
+            </div>
+          </div>
         </div>
 
         {/* Track Content */}
@@ -641,6 +782,39 @@ export function Timeline({ onClipsChange }: TimelineProps) {
                 </div>
               ) : (
                 <div className="absolute inset-0">{renderTrackClips('audio')}</div>
+              )}
+            </div>
+
+            {/* Text Track */}
+            <div
+              className={`h-16 bg-orange-50 border-b border-gray-200 relative ${isDraggingOver === 'text' ? 'bg-orange-100 ring-2 ring-orange-400' : ''}`}
+            >
+              {clips.filter(c => c.track === 'text').length === 0 ? (
+                <div className="h-full flex items-center justify-between px-3">
+                  <p className="text-xs text-gray-500 font-medium">📝 Text overlays & captions</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs bg-orange-600 text-white hover:bg-orange-700 border-orange-600"
+                    onClick={addTextClip}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add Text
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="absolute inset-0">{renderTrackClips('text')}</div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 px-2 text-xs bg-orange-600 text-white hover:bg-orange-700 border-orange-600 z-10"
+                    onClick={addTextClip}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add Text
+                  </Button>
+                </>
               )}
             </div>
 

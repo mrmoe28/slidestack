@@ -9,20 +9,7 @@ import { MediaUploader } from '@/components/features/editor/media-uploader'
 import { Timeline } from '@/components/features/editor/timeline'
 import { PreviewControls } from '@/components/features/editor/preview-controls'
 import { toast } from 'sonner'
-
-interface TimelineClip {
-  id: string
-  content: {
-    id: string
-    name: string
-    type: string
-    url: string
-    duration?: number
-  }
-  duration: number
-  order: number
-  track: 'video' | 'audio'
-}
+import type { TimelineClip } from '@/types/timeline'
 
 interface ProjectData {
   id: string
