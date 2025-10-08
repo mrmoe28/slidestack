@@ -73,9 +73,37 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
     }
   }
 
-  const handleDownload = () => {
-    if (project.outputUrl) {
-      window.open(project.outputUrl, '_blank')
+  const handleDownload = async () => {
+    if (!project.outputUrl) return
+
+    try {
+      // Fetch the video file
+      const response = await fetch(project.outputUrl)
+      const blob = await response.blob()
+
+      // Create a download link
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_slideshow.mp4`
+      document.body.appendChild(a)
+      a.click()
+
+      // Cleanup
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast({
+        title: 'Download started',
+        description: 'Your video is downloading to your Downloads folder.',
+      })
+    } catch (error) {
+      console.error('Download failed:', error)
+      toast({
+        title: 'Download failed',
+        description: 'Could not download the video. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
