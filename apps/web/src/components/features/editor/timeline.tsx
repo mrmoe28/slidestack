@@ -383,7 +383,7 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
     return () => clearInterval(interval)
   }, [isPlaying, getTotalDuration])
 
-  // Update preview canvas
+  // Update preview canvas with transitions
   useEffect(() => {
     const previewCanvas = document.getElementById('preview-canvas')
     if (!previewCanvas) return
@@ -395,13 +395,18 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
       return
     }
 
-    // Find current video clip
+    // Find current and next video clips with transition info
     let accumulatedTime = 0
     let currentVideoClip: TimelineClip | null = null
+    let nextVideoClip: TimelineClip | null = null
+    let clipStartTime = 0
 
-    for (const clip of videoClips) {
+    for (let i = 0; i < videoClips.length; i++) {
+      const clip = videoClips[i]
       if (currentTime >= accumulatedTime && currentTime < accumulatedTime + clip.duration) {
         currentVideoClip = clip
+        clipStartTime = accumulatedTime
+        nextVideoClip = videoClips[i + 1] || null
         break
       }
       accumulatedTime += clip.duration
@@ -412,16 +417,97 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
       return
     }
 
-    // Render video clip
-    const mediaFile = currentVideoClip.content as MediaFile
-    if (mediaFile.type === 'image') {
-      previewCanvas.innerHTML = `
-        <img src="${mediaFile.url}" alt="${mediaFile.name}" class="w-full h-full object-contain" />
+    // Calculate if we're in a transition
+    const timeInClip = currentTime - clipStartTime
+    const transitionDuration = nextVideoClip?.transition?.duration || 0.5
+    const isInTransition = nextVideoClip && (timeInClip >= currentVideoClip.duration - transitionDuration)
+    const transitionProgress = isInTransition
+      ? (timeInClip - (currentVideoClip.duration - transitionDuration)) / transitionDuration
+      : 0
+
+    // Clear and rebuild canvas
+    previewCanvas.innerHTML = ''
+
+    // Render current clip
+    const currentMediaFile = currentVideoClip.content as MediaFile
+    const currentElement = document.createElement('div')
+    currentElement.className = 'absolute inset-0 flex items-center justify-center transition-all duration-100'
+
+    if (isInTransition && nextVideoClip) {
+      const transitionType = nextVideoClip.transition?.type || 'fade'
+
+      // Apply transition effects to outgoing clip
+      switch (transitionType) {
+        case 'fade':
+        case 'dissolve':
+          currentElement.style.opacity = String(1 - transitionProgress)
+          break
+        case 'slide-left':
+          currentElement.style.transform = `translateX(-${transitionProgress * 100}%)`
+          break
+        case 'slide-right':
+          currentElement.style.transform = `translateX(${transitionProgress * 100}%)`
+          break
+        case 'zoom':
+          currentElement.style.transform = `scale(${1 + transitionProgress})`
+          currentElement.style.opacity = String(1 - transitionProgress)
+          break
+        case 'wipe':
+          currentElement.style.clipPath = `inset(0 ${transitionProgress * 100}% 0 0)`
+          break
+      }
+    }
+
+    if (currentMediaFile.type === 'image') {
+      currentElement.innerHTML = `
+        <img src="${currentMediaFile.url}" alt="${currentMediaFile.name}" class="w-full h-full object-contain" />
       `
-    } else if (mediaFile.type === 'video') {
-      previewCanvas.innerHTML = `
-        <video src="${mediaFile.url}" class="w-full h-full object-contain" controls />
+    } else if (currentMediaFile.type === 'video') {
+      currentElement.innerHTML = `
+        <video src="${currentMediaFile.url}" class="w-full h-full object-contain" controls />
       `
+    }
+    previewCanvas.appendChild(currentElement)
+
+    // Render next clip during transition
+    if (isInTransition && nextVideoClip) {
+      const nextMediaFile = nextVideoClip.content as MediaFile
+      const nextElement = document.createElement('div')
+      nextElement.className = 'absolute inset-0 flex items-center justify-center transition-all duration-100'
+
+      const transitionType = nextVideoClip.transition?.type || 'fade'
+
+      // Apply transition effects to incoming clip
+      switch (transitionType) {
+        case 'fade':
+        case 'dissolve':
+          nextElement.style.opacity = String(transitionProgress)
+          break
+        case 'slide-left':
+          nextElement.style.transform = `translateX(${(1 - transitionProgress) * 100}%)`
+          break
+        case 'slide-right':
+          nextElement.style.transform = `translateX(-${(1 - transitionProgress) * 100}%)`
+          break
+        case 'zoom':
+          nextElement.style.transform = `scale(${1 - transitionProgress * 0.5})`
+          nextElement.style.opacity = String(transitionProgress)
+          break
+        case 'wipe':
+          nextElement.style.clipPath = `inset(0 0 0 ${(1 - transitionProgress) * 100}%)`
+          break
+      }
+
+      if (nextMediaFile.type === 'image') {
+        nextElement.innerHTML = `
+          <img src="${nextMediaFile.url}" alt="${nextMediaFile.name}" class="w-full h-full object-contain" />
+        `
+      } else if (nextMediaFile.type === 'video') {
+        nextElement.innerHTML = `
+          <video src="${nextMediaFile.url}" class="w-full h-full object-contain" controls />
+        `
+      }
+      previewCanvas.appendChild(nextElement)
     }
 
     // Overlay text clips
