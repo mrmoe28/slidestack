@@ -33,6 +33,7 @@ interface ProjectCardProps {
 export function ProjectCard({ project, onDelete }: ProjectCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -78,6 +79,41 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
     }
   }
 
+  const handleResetStatus = async () => {
+    setResetting(true)
+
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'draft',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to reset project status')
+      }
+
+      toast({
+        title: 'Status reset',
+        description: 'Project status has been reset to draft.',
+      })
+
+      router.refresh()
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to reset project status. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setResetting(false)
+    }
+  }
+
   return (
     <>
       <Card className="hover:shadow-lg transition-shadow">
@@ -120,6 +156,16 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
               <Button size="sm" onClick={handleDownload}>
                 <Download className="w-4 h-4 mr-2" />
                 Download
+              </Button>
+            )}
+            {project.status === 'processing' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleResetStatus}
+                disabled={resetting}
+              >
+                {resetting ? 'Resetting...' : 'Reset Status'}
               </Button>
             )}
             <Button
