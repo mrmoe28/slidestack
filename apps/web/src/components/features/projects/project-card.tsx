@@ -85,7 +85,7 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>{project.title}</CardTitle>
-              <CardDescription>
+              <CardDescription suppressHydrationWarning>
                 Created {new Date(project.createdAt).toLocaleDateString()}
                 {project.description && ` • ${project.description}`}
               </CardDescription>
