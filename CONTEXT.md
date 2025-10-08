@@ -293,7 +293,7 @@ npm run build
 
 ## 📝 Current State
 
-**Status:** MVP development - Timeline UI enhancement in progress
+**Status:** MVP development - Timeline editing and audio playback complete
 
 **Completed:**
 - ✅ CLAUDE.md created with project guidelines
@@ -304,27 +304,38 @@ npm run build
 - ✅ NextAuth email authentication
 - ✅ Project dashboard UI
 - ✅ File upload functionality (base64 storage)
-- ✅ Basic timeline drag-and-drop
+- ✅ Enhanced timeline with drag-and-drop, playhead, scrubber
+- ✅ Timeline controls: play/pause, skip forward/backward, zoom in/out
+- ✅ Multi-track support (video track + audio track)
+- ✅ Time ruler with accurate timestamps (HH:MM:FF format)
+- ✅ Responsive layout with horizontal scrolling
+- ✅ Audio library with 7 copyright-free tracks (SoundHelix)
+- ✅ Audio playback synchronized with timeline preview
+- ✅ Timeline editing tools: Split, Trim, Delete
+- ✅ Project save functionality with toast notifications
+- ✅ Render job creation API endpoint
+- ✅ Cloudflare R2 storage client library
+- ✅ AWS SDK integration for S3-compatible storage
 
 **In Progress:**
-- 🔄 Enhanced timeline UI with controls, playhead, and timestamps
-- 🔄 No-scroll layout redesign (100vh viewport)
+- 🔄 FFmpeg worker service implementation
+- 🔄 Redis job queue setup
+- 🔄 Full R2 storage integration
 
 **Next Steps:**
-1. Add timeline controls (playhead, scrubber, time ruler)
-2. Add zoom controls and transport controls (play, pause)
-3. Implement clip reordering within timeline
-4. Add multi-track support (video, audio, text layers)
-5. Build FFmpeg worker service
-6. Migrate to R2/S3 storage
+1. Create worker service directory with FFmpeg rendering
+2. Set up Redis queue producer/consumer
+3. Integrate R2 upload for rendered videos
+4. Add video download endpoint and UI
+5. Implement render progress polling
+6. Add email notifications on render complete
+7. Migrate media uploads to R2 (currently base64)
 
 **Blocked:**
 - None
 
 **Known Issues:**
-- Timeline missing essential controls (playhead, timestamps, zoom)
-- Page requires scrolling to see timeline (poor UX)
-- No visual time ruler or frame-accurate positioning
+- None critical (all reported UI/audio issues resolved)
 
 ---
 
@@ -513,5 +524,108 @@ npm run build
 
 ---
 
-**Last Updated:** 2025-10-07  
-**Updated By:** Claude Code (Initial setup)
+---
+
+## 🎵 Audio Library & Timeline Features (2025-10-07)
+
+### Audio Library
+**Implementation Date:** October 7, 2025
+
+**Features:**
+- 7 copyright-free audio tracks from SoundHelix
+- Organized by categories: Upbeat, Energetic, Calm, Ambient, Chill, Corporate, Cinematic
+- Preview playback with play/pause controls
+- Volume set to 50% for preview
+- One-click add to timeline with (+) button
+- Duration display for each track
+
+**Files:**
+- `/apps/web/src/components/features/editor/audio-library.tsx`
+- `/apps/web/public/sample-audio/` (7 MP3 files, ~60MB total)
+
+**Technical Details:**
+- Uses HTML5 Audio API for preview playback
+- CustomEvent system for timeline integration
+- Async/await for proper audio loading and playback
+- Error handling for failed playback
+
+### Timeline Editing Tools
+**Implementation Date:** October 7, 2025
+
+**Features:**
+- **Split Tool** (Blue button): Splits clip at midpoint into two clips
+- **Trim Tool** (Yellow button): Prompts for new duration with validation (min 0.5s)
+- **Delete Tool** (Red button): Removes clip from timeline
+- All tools appear on hover for each clip
+- Automatic clip reordering after split operations
+
+**Files:**
+- `/apps/web/src/components/features/editor/timeline.tsx`
+
+**Functions:**
+- `splitClip(clipId)` - Splits clip and updates order of subsequent clips
+- `trimClip(clipId, newDuration)` - Updates clip duration with minimum validation
+- `removeClip(clipId)` - Removes clip and updates state
+
+### Audio Playback Synchronization
+**Implementation Date:** October 7, 2025
+
+**Features:**
+- Audio clips play automatically during timeline preview
+- Synchronized with playhead position (±0.1s tolerance)
+- Automatic switching between audio clips
+- Pauses when timeline playback stops
+- Seeks to correct position when scrubbing
+- Volume set to 50% during preview
+
+**Implementation:**
+```typescript
+// Audio playback effect in timeline.tsx (lines 335-415)
+- Finds current audio clip based on currentTime
+- Creates new Audio element when clip changes
+- Syncs existing audio element with playhead
+- Handles cleanup on pause/unmount
+```
+
+### Responsive Layout Fixes
+**Implementation Date:** October 7, 2025
+
+**Issues Resolved:**
+- Timeline content width now dynamic based on total duration
+- Horizontal scrolling enabled for long timelines
+- Minimum width of 800px for empty timelines
+- Audio tracks no longer cut off screen
+
+**Technical Details:**
+```typescript
+// Timeline container width calculation
+width: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND, 800)}px`
+minWidth: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND, 800)}px`
+```
+
+### R2 Storage Client
+**Implementation Date:** October 7, 2025
+
+**Features:**
+- Upload rendered videos to Cloudflare R2
+- Generate signed download URLs (1-hour expiration)
+- Delete rendered videos
+- Check file existence
+- Support for media file uploads
+- Public URL generation
+
+**Files:**
+- `/apps/web/src/lib/storage.ts`
+
+**Dependencies:**
+- `@aws-sdk/client-s3` - S3-compatible operations
+- `@aws-sdk/s3-request-presigner` - Signed URL generation
+
+**Path Structure:**
+- Rendered videos: `/rendered-videos/{userId}/{projectId}/{jobId}/{fileName}`
+- Media files: `/media/{userId}/{projectId}/{fileName}`
+
+---
+
+**Last Updated:** 2025-10-07
+**Updated By:** Claude Code (Timeline editing, audio playback, R2 storage implementation)
