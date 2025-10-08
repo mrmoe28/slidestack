@@ -549,35 +549,80 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
               textDiv.className = `absolute left-0 right-0 ${positionClass} px-8 ${alignClass} z-10 cursor-move`
             }
 
-            textDiv.innerHTML = `
-              <p style="
-                color: ${textContent.color};
-                font-size: ${textContent.fontSize}px;
-                font-family: ${textContent.fontFamily};
-                background-color: ${textContent.backgroundColor || 'transparent'};
-                padding: 8px 16px;
-                display: inline-block;
-                border-radius: 4px;
-                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-                user-select: none;
-              ">${textContent.text}</p>
+            // Create editable text element
+            const textP = document.createElement('p')
+            textP.contentEditable = 'true'
+            textP.spellcheck = false
+            textP.textContent = textContent.text
+            textP.style.cssText = `
+              color: ${textContent.color};
+              font-size: ${textContent.fontSize}px;
+              font-family: ${textContent.fontFamily};
+              background-color: ${textContent.backgroundColor || 'transparent'};
+              padding: 8px 16px;
+              display: inline-block;
+              border-radius: 4px;
+              text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+              outline: 2px dashed transparent;
+              transition: outline 0.2s;
+              cursor: text;
+              min-width: 50px;
             `
 
-            // Add drag functionality
+            // Focus outline
+            textP.addEventListener('focus', () => {
+              textP.style.outline = '2px dashed rgba(59, 130, 246, 0.5)'
+            })
+
+            textP.addEventListener('blur', () => {
+              textP.style.outline = '2px dashed transparent'
+              // Save text changes
+              const newText = textP.textContent || ''
+              const updatedClips = clips.map(c => {
+                if (c.id === clip.id && c.content.type === 'text') {
+                  return {
+                    ...c,
+                    content: {
+                      ...c.content,
+                      text: newText,
+                    }
+                  }
+                }
+                return c
+              })
+              onClipsChange?.(updatedClips)
+            })
+
+            // Prevent Enter key from adding newlines
+            textP.addEventListener('keydown', (e: KeyboardEvent) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                textP.blur()
+              }
+            })
+
+            textDiv.appendChild(textP)
+
+            // Add drag functionality (only on text container, not the text itself)
             let isDragging = false
+            let dragStarted = false
             let startX = 0
             let startY = 0
             let initialX = 0
             let initialY = 0
 
             const handleMouseDown = (e: MouseEvent) => {
+              // Don't start drag if clicking on the text element itself
+              if (e.target === textP) return
+
+              e.preventDefault()
               isDragging = true
+              dragStarted = false
               startX = e.clientX
               startY = e.clientY
               const rect = textDiv.getBoundingClientRect()
               initialX = rect.left
               initialY = rect.top
-              textDiv.style.cursor = 'grabbing'
             }
 
             const handleMouseMove = (e: MouseEvent) => {
@@ -585,41 +630,56 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
 
               const deltaX = e.clientX - startX
               const deltaY = e.clientY - startY
-              const newX = initialX + deltaX
-              const newY = initialY + deltaY
 
-              // Update position
-              textDiv.style.left = `${newX}px`
-              textDiv.style.top = `${newY}px`
-              textDiv.className = 'absolute z-10 cursor-grabbing'
+              // Only start dragging after moving 5px (prevents accidental drags)
+              if (!dragStarted && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
+                dragStarted = true
+                textDiv.style.cursor = 'grabbing'
+                textP.contentEditable = 'false'
+              }
+
+              if (dragStarted) {
+                const newX = initialX + deltaX
+                const newY = initialY + deltaY
+
+                // Update position
+                textDiv.style.left = `${newX}px`
+                textDiv.style.top = `${newY}px`
+                textDiv.className = 'absolute z-10'
+              }
             }
 
             const handleMouseUp = (e: MouseEvent) => {
               if (!isDragging) return
-              isDragging = false
-              textDiv.style.cursor = 'move'
 
-              const deltaX = e.clientX - startX
-              const deltaY = e.clientY - startY
-              const finalX = initialX + deltaX
-              const finalY = initialY + deltaY
+              if (dragStarted) {
+                const deltaX = e.clientX - startX
+                const deltaY = e.clientY - startY
+                const finalX = initialX + deltaX
+                const finalY = initialY + deltaY
 
-              // Update clip with custom position
-              const updatedClips = clips.map(c => {
-                if (c.id === clip.id && c.content.type === 'text') {
-                  return {
-                    ...c,
-                    content: {
-                      ...c.content,
-                      position: 'custom' as const,
-                      customX: Math.max(0, finalX),
-                      customY: Math.max(0, finalY),
+                // Update clip with custom position
+                const updatedClips = clips.map(c => {
+                  if (c.id === clip.id && c.content.type === 'text') {
+                    return {
+                      ...c,
+                      content: {
+                        ...c.content,
+                        position: 'custom' as const,
+                        customX: Math.max(0, finalX),
+                        customY: Math.max(0, finalY),
+                      }
                     }
                   }
-                }
-                return c
-              })
-              onClipsChange?.(updatedClips)
+                  return c
+                })
+                onClipsChange?.(updatedClips)
+              }
+
+              isDragging = false
+              dragStarted = false
+              textDiv.style.cursor = 'move'
+              textP.contentEditable = 'true'
             }
 
             textDiv.addEventListener('mousedown', handleMouseDown)
