@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "monitor": "node scripts/auto-fix-loop.mjs",
+    "check-all": "pnpm lint && pnpm typecheck && pnpm build"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.10.0",
