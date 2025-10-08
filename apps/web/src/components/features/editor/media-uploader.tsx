@@ -59,7 +59,8 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
     }
 
     fetchMediaFiles()
-  }, [projectId, toast])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
 
   const uploadFiles = useCallback(async (filesToUpload: FileList) => {
     if (filesToUpload.length === 0) return
@@ -135,7 +136,8 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
     } finally {
       setUploading(false)
     }
-  }, [files, projectId, onFileUploaded, toast])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, projectId, onFileUploaded])
 
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files
