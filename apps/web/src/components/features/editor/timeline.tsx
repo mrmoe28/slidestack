@@ -389,10 +389,16 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
     if (!previewCanvas) return
 
     const videoClips = clips.filter(c => c.track === 'video').sort((a, b) => a.order - b.order)
+    const textClips = clips.filter(c => c.track === 'text').sort((a, b) => a.order - b.order)
 
+    // If no video clips but we have text clips, show a solid background
     if (videoClips.length === 0) {
-      previewCanvas.innerHTML = '<p class="text-gray-400 text-lg">Preview Canvas</p>'
-      return
+      if (textClips.length === 0) {
+        previewCanvas.innerHTML = '<p class="text-gray-400 text-lg">Preview Canvas</p>'
+        return
+      }
+      // Create a solid background for text-only preview
+      previewCanvas.innerHTML = '<div class="absolute inset-0 bg-gray-900"></div>'
     }
 
     // Find current and next video clips with transition info
@@ -510,8 +516,7 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
       previewCanvas.appendChild(nextElement)
     }
 
-    // Overlay text clips
-    const textClips = clips.filter(c => c.track === 'text').sort((a, b) => a.order - b.order)
+    // Overlay text clips (textClips already defined at top of useEffect)
     textClips.forEach((clip) => {
       // Calculate text clip timing
       let textAccumulated = 0
@@ -522,18 +527,28 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
         if (c.id === clip.id) {
           if (currentTime >= textAccumulated && currentTime < textAccumulated + clip.duration) {
             // This text should be visible
-            const positionClass =
-              textContent.position === 'top' ? 'top-8' :
-              textContent.position === 'bottom' ? 'bottom-8' :
-              'top-1/2 -translate-y-1/2'
-
-            const alignClass =
-              textContent.alignment === 'left' ? 'text-left' :
-              textContent.alignment === 'right' ? 'text-right' :
-              'text-center'
-
             const textDiv = document.createElement('div')
-            textDiv.className = `absolute left-0 right-0 ${positionClass} px-8 ${alignClass} z-10`
+            textDiv.dataset.clipId = clip.id
+
+            // Handle custom positioning or preset positions
+            if (textContent.position === 'custom' && textContent.customX !== undefined && textContent.customY !== undefined) {
+              textDiv.className = 'absolute z-10 cursor-move'
+              textDiv.style.left = `${textContent.customX}px`
+              textDiv.style.top = `${textContent.customY}px`
+            } else {
+              const positionClass =
+                textContent.position === 'top' ? 'top-8' :
+                textContent.position === 'bottom' ? 'bottom-8' :
+                'top-1/2 -translate-y-1/2'
+
+              const alignClass =
+                textContent.alignment === 'left' ? 'text-left' :
+                textContent.alignment === 'right' ? 'text-right' :
+                'text-center'
+
+              textDiv.className = `absolute left-0 right-0 ${positionClass} px-8 ${alignClass} z-10 cursor-move`
+            }
+
             textDiv.innerHTML = `
               <p style="
                 color: ${textContent.color};
@@ -544,8 +559,73 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
                 display: inline-block;
                 border-radius: 4px;
                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+                user-select: none;
               ">${textContent.text}</p>
             `
+
+            // Add drag functionality
+            let isDragging = false
+            let startX = 0
+            let startY = 0
+            let initialX = 0
+            let initialY = 0
+
+            const handleMouseDown = (e: MouseEvent) => {
+              isDragging = true
+              startX = e.clientX
+              startY = e.clientY
+              const rect = textDiv.getBoundingClientRect()
+              initialX = rect.left
+              initialY = rect.top
+              textDiv.style.cursor = 'grabbing'
+            }
+
+            const handleMouseMove = (e: MouseEvent) => {
+              if (!isDragging) return
+
+              const deltaX = e.clientX - startX
+              const deltaY = e.clientY - startY
+              const newX = initialX + deltaX
+              const newY = initialY + deltaY
+
+              // Update position
+              textDiv.style.left = `${newX}px`
+              textDiv.style.top = `${newY}px`
+              textDiv.className = 'absolute z-10 cursor-grabbing'
+            }
+
+            const handleMouseUp = (e: MouseEvent) => {
+              if (!isDragging) return
+              isDragging = false
+              textDiv.style.cursor = 'move'
+
+              const deltaX = e.clientX - startX
+              const deltaY = e.clientY - startY
+              const finalX = initialX + deltaX
+              const finalY = initialY + deltaY
+
+              // Update clip with custom position
+              const updatedClips = clips.map(c => {
+                if (c.id === clip.id && c.content.type === 'text') {
+                  return {
+                    ...c,
+                    content: {
+                      ...c.content,
+                      position: 'custom' as const,
+                      customX: Math.max(0, finalX),
+                      customY: Math.max(0, finalY),
+                    }
+                  }
+                }
+                return c
+              })
+              onClipsChange?.(updatedClips)
+            }
+
+            textDiv.addEventListener('mousedown', handleMouseDown)
+            document.addEventListener('mousemove', handleMouseMove)
+            document.addEventListener('mouseup', handleMouseUp)
+
             previewCanvas.appendChild(textDiv)
           }
           break
@@ -553,7 +633,7 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
         textAccumulated += c.duration
       }
     })
-  }, [currentTime, clips])
+  }, [currentTime, clips, onClipsChange])
 
   // Audio playback synchronization
   useEffect(() => {

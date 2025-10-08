@@ -38,6 +38,69 @@ const ALIGNMENTS = [
   { value: 'right', icon: AlignRight, label: 'Right' },
 ]
 
+const TEXT_TEMPLATES = [
+  {
+    name: 'Bold & Modern',
+    text: 'BOLD TITLE',
+    fontSize: 72,
+    fontFamily: 'Impact',
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+    position: 'center' as const,
+    alignment: 'center' as const,
+  },
+  {
+    name: 'Minimalist',
+    text: 'Simple & Clean',
+    fontSize: 48,
+    fontFamily: 'Helvetica',
+    color: '#000000',
+    backgroundColor: 'transparent',
+    position: 'bottom' as const,
+    alignment: 'center' as const,
+  },
+  {
+    name: 'Retro Vintage',
+    text: 'Retro Vibes',
+    fontSize: 56,
+    fontFamily: 'Georgia',
+    color: '#FFD700',
+    backgroundColor: 'rgba(139, 69, 19, 0.8)',
+    position: 'top' as const,
+    alignment: 'center' as const,
+  },
+  {
+    name: 'News/Broadcast',
+    text: 'BREAKING NEWS',
+    fontSize: 40,
+    fontFamily: 'Arial',
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(220, 20, 60, 0.95)',
+    position: 'bottom' as const,
+    alignment: 'left' as const,
+  },
+  {
+    name: 'Social Caption',
+    text: 'Check this out! 👀',
+    fontSize: 32,
+    fontFamily: 'Verdana',
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    position: 'bottom' as const,
+    alignment: 'center' as const,
+  },
+  {
+    name: 'Neon Glow',
+    text: 'NEON LIGHTS',
+    fontSize: 64,
+    fontFamily: 'Impact',
+    color: '#00FFFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    position: 'center' as const,
+    alignment: 'center' as const,
+  },
+]
+
 export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps) {
   const [text, setText] = useState('')
   const [fontSize, setFontSize] = useState(48)
@@ -89,6 +152,44 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
       <div className="flex items-center gap-2 pb-3 border-b">
         <Type className="w-5 h-5 text-orange-600" />
         <h3 className="font-semibold text-gray-900">Text Properties</h3>
+      </div>
+
+      {/* Text Templates */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-gray-700">Text Templates</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {TEXT_TEMPLATES.map((template) => (
+            <Button
+              key={template.name}
+              size="sm"
+              variant="outline"
+              className="text-xs h-auto py-2 px-2 hover:bg-orange-50 hover:border-orange-500"
+              onClick={() => {
+                setText(template.text)
+                setFontSize(template.fontSize)
+                setFontFamily(template.fontFamily)
+                setColor(template.color)
+                setBackgroundColor(template.backgroundColor)
+                setPosition(template.position)
+                setAlignment(template.alignment)
+                handleUpdate({
+                  text: template.text,
+                  fontSize: template.fontSize,
+                  fontFamily: template.fontFamily,
+                  color: template.color,
+                  backgroundColor: template.backgroundColor,
+                  position: template.position,
+                  alignment: template.alignment,
+                })
+              }}
+            >
+              <div className="text-center">
+                <div className="font-medium">{template.name}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{template.text}</div>
+              </div>
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Text Content */}
