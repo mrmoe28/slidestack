@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, Type, Plus } from 'lucide-react'
+import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, Type, Plus, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import type { TimelineClip, ClipContent, MediaFile, TextContent } from '@/types/timeline'
@@ -121,6 +121,10 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
         duration,
         order: trackClips.length,
         track: finalTrack,
+        transition: {
+          type: 'fade',
+          duration: 0.5
+        }
       }
 
       const updatedClips = [...clips, newClip]
@@ -131,6 +135,27 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
       }
     } catch (error) {
       console.error('Error adding clip to timeline:', error)
+    }
+  }, [clips, onClipsChange])
+
+  const updateClipTransition = useCallback((clipId: string, transitionType: string) => {
+    const updatedClips = clips.map(c => {
+      if (c.id === clipId) {
+        return {
+          ...c,
+          transition: {
+            type: transitionType as any,
+            duration: 0.5
+          }
+        }
+      }
+      return c
+    })
+
+    setClips(updatedClips)
+
+    if (onClipsChange) {
+      onClipsChange(updatedClips)
     }
   }, [clips, onClipsChange])
 
@@ -585,24 +610,48 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
               <div className="absolute bottom-0 left-0 right-0 p-1.5">
                 <p className="text-xs text-white truncate font-medium">{textContent.text}</p>
-                <p className="text-xs text-gray-300">{clip.duration.toFixed(1)}s</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-300">{clip.duration.toFixed(1)}s</p>
+                  {clip.transition && (
+                    <span className="text-xs px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium">
+                      {clip.transition.type}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Resize Handles */}
             <div
-              className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+              className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-transparent hover:bg-white/50 hover:shadow-lg transition-all z-10 border-l-2 border-transparent hover:border-white"
               onMouseDown={(e) => handleResizeStart(e, clip.id, 'left')}
-              title="Drag to resize"
+              title="◀ Drag to resize duration"
             />
             <div
-              className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+              className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-transparent hover:bg-white/50 hover:shadow-lg transition-all z-10 border-r-2 border-transparent hover:border-white"
               onMouseDown={(e) => handleResizeStart(e, clip.id, 'right')}
-              title="Drag to resize"
+              title="Drag to resize duration ▶"
             />
 
             {/* Editing Tools */}
             <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-purple-600 hover:bg-purple-700 text-white rounded"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const transitions = ['none', 'fade', 'dissolve', 'slide-left', 'slide-right', 'wipe', 'zoom']
+                  const current = clip.transition?.type || 'none'
+                  const currentIndex = transitions.indexOf(current)
+                  const nextIndex = (currentIndex + 1) % transitions.length
+                  updateClipTransition(clip.id, transitions[nextIndex])
+                }}
+                title="Change transition effect"
+              >
+                <Sparkles className="w-3 h-3" />
+              </Button>
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -675,24 +724,49 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
             <div className="absolute bottom-0 left-0 right-0 p-1.5">
               <p className="text-xs text-white truncate font-medium">{mediaFile.name}</p>
-              <p className="text-xs text-gray-300">{clip.duration.toFixed(1)}s</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-300">{clip.duration.toFixed(1)}s</p>
+                {clip.transition && (
+                  <span className="text-xs px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium uppercase">
+                    {clip.transition.type}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Resize Handles */}
           <div
-            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-transparent hover:bg-white/50 hover:shadow-lg transition-all z-10 border-l-2 border-transparent hover:border-white"
             onMouseDown={(e) => handleResizeStart(e, clip.id, 'left')}
-            title="Drag to resize"
+            title="◀ Drag to resize duration"
           />
           <div
-            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-transparent hover:bg-white/50 hover:shadow-lg transition-all z-10 border-r-2 border-transparent hover:border-white"
             onMouseDown={(e) => handleResizeStart(e, clip.id, 'right')}
-            title="Drag to resize"
+            title="Drag to resize duration ▶"
           />
 
           {/* Editing Tools */}
           <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            {/* Transition button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-purple-600 hover:bg-purple-700 text-white rounded"
+              onClick={(e) => {
+                e.stopPropagation()
+                const transitions = ['none', 'fade', 'dissolve', 'slide-left', 'slide-right', 'wipe', 'zoom']
+                const current = clip.transition?.type || 'none'
+                const currentIndex = transitions.indexOf(current)
+                const nextIndex = (currentIndex + 1) % transitions.length
+                updateClipTransition(clip.id, transitions[nextIndex])
+              }}
+              title="Change transition effect"
+            >
+              <Sparkles className="w-3 h-3" />
+            </Button>
+
             {/* Split button */}
             <Button
               variant="ghost"

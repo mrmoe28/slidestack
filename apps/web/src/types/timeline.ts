@@ -24,10 +24,16 @@ export interface TextContent {
 
 export type ClipContent = MediaFile | TextContent
 
+export type TransitionType = 'none' | 'fade' | 'dissolve' | 'slide-left' | 'slide-right' | 'wipe' | 'zoom'
+
 export interface TimelineClip {
   id: string
   content: ClipContent
   duration: number
   order: number
   track: 'video' | 'audio' | 'text'
+  transition?: {
+    type: TransitionType
+    duration: number // Duration of transition in seconds (0.5-2s)
+  }
 }

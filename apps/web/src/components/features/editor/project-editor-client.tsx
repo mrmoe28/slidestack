@@ -121,13 +121,16 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
       const { jobId } = await response.json()
 
       toast.success('Rendering started! This may take a few minutes...', {
-        description: `Job ID: ${jobId}`,
+        description: `Job ID: ${jobId}\n\nRendered videos will be saved to your project folder and accessible from the dashboard once complete.`,
+        duration: 8000,
       })
 
-      // TODO: Implement job status polling
+      // TODO: Implement job status polling and download link
     } catch (error) {
       console.error('Render error:', error)
-      toast.error('Failed to start rendering')
+      toast.error('Failed to start rendering', {
+        description: 'Please check your timeline has clips and try again.',
+      })
     } finally {
       setIsRendering(false)
     }
@@ -289,7 +292,7 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
       </div>
 
       {/* Timeline Area - Fixed height at bottom */}
-      <div className="flex-shrink-0 h-64 bg-white border-t border-gray-200">
+      <div className="flex-shrink-0 h-80 bg-white border-t border-gray-200">
         <Timeline
           onClipsChange={handleClipsChange}
           selectedClipId={selectedClipId}
