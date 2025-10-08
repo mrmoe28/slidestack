@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, ArrowLeftRight, Type, Plus } from 'lucide-react'
+import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, Type, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import type { TimelineClip, ClipContent, MediaFile, TextContent } from '@/types/timeline'
@@ -20,6 +20,7 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
   const [zoom, setZoom] = useState(1)
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
+  const [resizingClip, setResizingClip] = useState<{ clipId: string; edge: 'left' | 'right'; initialDuration: number; initialX: number } | null>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   const PIXELS_PER_SECOND = 50 * zoom
@@ -182,21 +183,6 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
     }
   }, [clips, onClipsChange])
 
-  const trimClip = useCallback((clipId: string, newDuration: number) => {
-    const updatedClips = clips.map(c => {
-      if (c.id === clipId) {
-        return { ...c, duration: Math.max(0.5, newDuration) } // Minimum 0.5s
-      }
-      return c
-    })
-
-    setClips(updatedClips)
-
-    if (onClipsChange) {
-      onClipsChange(updatedClips)
-    }
-  }, [clips, onClipsChange])
-
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!timelineRef.current || isDraggingPlayhead) return
 
@@ -225,6 +211,58 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
     setIsDraggingPlayhead(false)
   }, [])
 
+  // Clip resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent, clipId: string, edge: 'left' | 'right') => {
+    e.stopPropagation()
+    const clip = clips.find(c => c.id === clipId)
+    if (!clip) return
+
+    setResizingClip({
+      clipId,
+      edge,
+      initialDuration: clip.duration,
+      initialX: e.clientX
+    })
+    setIsPlaying(false) // Pause playback during resize
+  }, [clips])
+
+  const handleResizeDrag = useCallback((e: MouseEvent) => {
+    if (!resizingClip || !timelineRef.current) return
+
+    const deltaX = e.clientX - resizingClip.initialX
+    const deltaDuration = deltaX / PIXELS_PER_SECOND
+
+    let newDuration: number
+    if (resizingClip.edge === 'right') {
+      // Dragging right edge - increase/decrease duration
+      newDuration = resizingClip.initialDuration + deltaDuration
+    } else {
+      // Dragging left edge - decrease/increase duration (opposite direction)
+      newDuration = resizingClip.initialDuration - deltaDuration
+    }
+
+    // Clamp to minimum 0.5 seconds
+    newDuration = Math.max(0.5, newDuration)
+
+    // Update clip duration in real-time
+    setClips(prevClips =>
+      prevClips.map(c =>
+        c.id === resizingClip.clipId ? { ...c, duration: newDuration } : c
+      )
+    )
+  }, [resizingClip, PIXELS_PER_SECOND])
+
+  const handleResizeEnd = useCallback(() => {
+    if (!resizingClip) return
+
+    // Notify parent of final clip changes
+    if (onClipsChange) {
+      onClipsChange(clips)
+    }
+
+    setResizingClip(null)
+  }, [resizingClip, clips, onClipsChange])
+
   // Handle playhead dragging
   useEffect(() => {
     if (!isDraggingPlayhead) return
@@ -237,6 +275,19 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
       window.removeEventListener('mouseup', handlePlayheadMouseUp)
     }
   }, [isDraggingPlayhead, handlePlayheadDrag, handlePlayheadMouseUp])
+
+  // Handle clip resizing
+  useEffect(() => {
+    if (!resizingClip) return
+
+    window.addEventListener('mousemove', handleResizeDrag)
+    window.addEventListener('mouseup', handleResizeEnd)
+
+    return () => {
+      window.removeEventListener('mousemove', handleResizeDrag)
+      window.removeEventListener('mouseup', handleResizeEnd)
+    }
+  }, [resizingClip, handleResizeDrag, handleResizeEnd])
 
   // Listen for audio track selection from AudioLibrary
   useEffect(() => {
@@ -538,8 +589,20 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
               </div>
             </div>
 
+            {/* Resize Handles */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+              onMouseDown={(e) => handleResizeStart(e, clip.id, 'left')}
+              title="Drag to resize"
+            />
+            <div
+              className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+              onMouseDown={(e) => handleResizeStart(e, clip.id, 'right')}
+              title="Drag to resize"
+            />
+
             {/* Editing Tools */}
-            <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
               <Button
                 variant="ghost"
                 size="sm"
@@ -551,22 +614,6 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
                 title="Split clip"
               >
                 <Scissors className="w-3 h-3" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 bg-yellow-600 hover:bg-yellow-700 text-white rounded"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  const newDuration = prompt(`Enter new duration (current: ${clip.duration.toFixed(1)}s):`)
-                  if (newDuration) {
-                    trimClip(clip.id, parseFloat(newDuration))
-                  }
-                }}
-                title="Trim clip"
-              >
-                <ArrowLeftRight className="w-3 h-3" />
               </Button>
 
               <Button
@@ -632,8 +679,20 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
             </div>
           </div>
 
+          {/* Resize Handles */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+            onMouseDown={(e) => handleResizeStart(e, clip.id, 'left')}
+            title="Drag to resize"
+          />
+          <div
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-white/30 transition-colors z-10"
+            onMouseDown={(e) => handleResizeStart(e, clip.id, 'right')}
+            title="Drag to resize"
+          />
+
           {/* Editing Tools */}
-          <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
             {/* Split button */}
             <Button
               variant="ghost"
@@ -646,23 +705,6 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
               title="Split clip"
             >
               <Scissors className="w-3 h-3" />
-            </Button>
-
-            {/* Trim button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 bg-yellow-600 hover:bg-yellow-700 text-white rounded"
-              onClick={(e) => {
-                e.stopPropagation()
-                const newDuration = prompt(`Enter new duration (current: ${clip.duration.toFixed(1)}s):`)
-                if (newDuration) {
-                  trimClip(clip.id, parseFloat(newDuration))
-                }
-              }}
-              title="Trim clip"
-            >
-              <ArrowLeftRight className="w-3 h-3" />
             </Button>
 
             {/* Delete button */}
@@ -722,26 +764,6 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 px-2 text-xs font-medium text-gray-700 hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => {
-                if (!selectedClipId) return
-                const clip = clips.find(c => c.id === selectedClipId)
-                if (!clip) return
-                const newDuration = prompt(`Enter new duration (current: ${clip.duration.toFixed(1)}s):`)
-                if (newDuration) {
-                  trimClip(selectedClipId, parseFloat(newDuration))
-                }
-              }}
-              disabled={!selectedClipId}
-              title="Cut/Trim selected clip"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5 mr-1" />
-              Cut
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
               className="h-8 px-2 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => selectedClipId && removeClip(selectedClipId)}
               disabled={!selectedClipId}
@@ -750,6 +772,10 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
               <X className="w-3.5 h-3.5 mr-1" />
               Delete
             </Button>
+          </div>
+
+          <div className="flex items-center gap-1 border-l pl-3 ml-1">
+            <span className="text-xs text-gray-500">💡 Drag clip edges to resize</span>
           </div>
         </div>
 
