@@ -8,8 +8,9 @@ import { ProjectEditorNew } from '@/components/features/editor/project-editor-ne
 import { MediaUploader } from '@/components/features/editor/media-uploader'
 import { Timeline } from '@/components/features/editor/timeline'
 import { PreviewControls } from '@/components/features/editor/preview-controls'
+import { TextEditorPanel } from '@/components/features/editor/text-editor-panel'
 import { toast } from 'sonner'
-import type { TimelineClip } from '@/types/timeline'
+import type { TimelineClip, TextContent } from '@/types/timeline'
 
 interface ProjectData {
   id: string
@@ -26,6 +27,7 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isRendering, setIsRendering] = useState(false)
   const [totalDuration, setTotalDuration] = useState(0)
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
 
   const handleClipsChange = useCallback((updatedClips: TimelineClip[]) => {
     setClips(updatedClips)
@@ -114,6 +116,27 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
     }
   }
 
+  const handleClipSelect = useCallback((clipId: string | null) => {
+    setSelectedClipId(clipId)
+  }, [])
+
+  const handleTextUpdate = useCallback((clipId: string, updates: Partial<TextContent>) => {
+    setClips((prevClips) => {
+      return prevClips.map((clip) => {
+        if (clip.id === clipId && clip.content.type === 'text') {
+          return {
+            ...clip,
+            content: {
+              ...clip.content,
+              ...updates,
+            },
+          }
+        }
+        return clip
+      })
+    })
+  }, [])
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
@@ -190,58 +213,71 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
           </div>
         </main>
 
-        {/* Right Sidebar - Properties */}
-        <aside className="w-56 flex-shrink-0 bg-white border-l shadow-sm overflow-y-auto">
+        {/* Right Sidebar - Properties / Text Editor */}
+        <aside className="w-80 flex-shrink-0 bg-white border-l shadow-sm overflow-y-auto">
           <div className="p-3 space-y-3">
-            <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Properties</h2>
+            {selectedClipId && clips.find(c => c.id === selectedClipId)?.content.type === 'text' ? (
+              <TextEditorPanel
+                selectedClip={clips.find(c => c.id === selectedClipId) || null}
+                onUpdate={handleTextUpdate}
+              />
+            ) : (
+              <>
+                <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Properties</h2>
 
-            <div className="space-y-2">
-              <div className="p-2 bg-gray-50 rounded border border-gray-200">
-                <label className="text-xs text-gray-600 block mb-0.5 font-medium">Duration</label>
-                <p className="text-sm font-semibold text-gray-900">{formatDuration(totalDuration)}</p>
-              </div>
-              <div className="p-2 bg-gray-50 rounded border border-gray-200">
-                <label className="text-xs text-gray-600 block mb-0.5 font-medium">Resolution</label>
-                <p className="text-sm font-semibold text-gray-900">1920×1080</p>
-              </div>
-              <div className="p-2 bg-gray-50 rounded border border-gray-200">
-                <label className="text-xs text-gray-600 block mb-0.5 font-medium">FPS</label>
-                <p className="text-sm font-semibold text-gray-900">30</p>
-              </div>
-              <div className="p-2 bg-gray-50 rounded border border-gray-200">
-                <label className="text-xs text-gray-600 block mb-0.5 font-medium">Clips</label>
-                <p className="text-sm font-semibold text-gray-900">{clips.length}</p>
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                    <label className="text-xs text-gray-600 block mb-0.5 font-medium">Duration</label>
+                    <p className="text-sm font-semibold text-gray-900">{formatDuration(totalDuration)}</p>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                    <label className="text-xs text-gray-600 block mb-0.5 font-medium">Resolution</label>
+                    <p className="text-sm font-semibold text-gray-900">1920×1080</p>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                    <label className="text-xs text-gray-600 block mb-0.5 font-medium">FPS</label>
+                    <p className="text-sm font-semibold text-gray-900">30</p>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                    <label className="text-xs text-gray-600 block mb-0.5 font-medium">Clips</label>
+                    <p className="text-sm font-semibold text-gray-900">{clips.length}</p>
+                  </div>
+                </div>
 
-            <div className="pt-3 border-t">
-              <h3 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Export</h3>
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Quality</label>
-                  <select className="w-full text-xs border border-gray-300 rounded px-2 py-1.5">
-                    <option>High (1080p)</option>
-                    <option>Medium (720p)</option>
-                    <option>Low (480p)</option>
-                  </select>
+                <div className="pt-3 border-t">
+                  <h3 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Export</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">Quality</label>
+                      <select className="w-full text-xs border border-gray-300 rounded px-2 py-1.5">
+                        <option>High (1080p)</option>
+                        <option>Medium (720p)</option>
+                        <option>Low (480p)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">Format</label>
+                      <select className="w-full text-xs border border-gray-300 rounded px-2 py-1.5">
+                        <option>MP4</option>
+                        <option>WebM</option>
+                        <option>AVI</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Format</label>
-                  <select className="w-full text-xs border border-gray-300 rounded px-2 py-1.5">
-                    <option>MP4</option>
-                    <option>WebM</option>
-                    <option>AVI</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </aside>
       </div>
 
       {/* Timeline Area - Fixed height at bottom */}
       <div className="flex-shrink-0 h-64 bg-white border-t border-gray-200">
-        <Timeline onClipsChange={handleClipsChange} />
+        <Timeline
+          onClipsChange={handleClipsChange}
+          selectedClipId={selectedClipId}
+          onClipSelect={handleClipSelect}
+        />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Upload, File, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -21,8 +21,45 @@ interface MediaUploaderProps {
 export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps) {
   const [files, setFiles] = useState<MediaFile[]>([])
   const [uploading, setUploading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const { toast } = useToast()
+
+  // Fetch existing media files on mount
+  useEffect(() => {
+    const fetchMediaFiles = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/projects/${projectId}/media`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch media files')
+        }
+
+        const data = await response.json()
+        const loadedFiles: MediaFile[] = data.files.map((file: any) => ({
+          id: file.id,
+          name: file.filename,
+          size: file.size,
+          type: file.type,
+          url: file.url,
+        }))
+
+        setFiles(loadedFiles)
+      } catch (error) {
+        console.error('Error fetching media files:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load media files',
+          variant: 'destructive',
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchMediaFiles()
+  }, [projectId, toast])
 
   const uploadFiles = useCallback(async (filesToUpload: FileList) => {
     if (filesToUpload.length === 0) return
@@ -175,16 +212,16 @@ export function MediaUploader({ projectId, onFileUploaded }: MediaUploaderProps)
           multiple
           accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp3,audio/wav"
           onChange={handleFileSelect}
-          disabled={uploading}
+          disabled={uploading || loading}
         />
         <label htmlFor="file-upload" className="cursor-pointer">
-          {uploading ? (
+          {uploading || loading ? (
             <Loader2 className="w-8 h-8 mx-auto mb-2 text-indigo-500 animate-spin" />
           ) : (
             <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
           )}
           <p className="text-sm text-gray-600 mb-1 font-medium">
-            {uploading ? 'Uploading...' : isDragging ? 'Drop files here' : 'Click to upload or drag and drop'}
+            {loading ? 'Loading...' : uploading ? 'Uploading...' : isDragging ? 'Drop files here' : 'Click to upload or drag and drop'}
           </p>
           <p className="text-xs text-gray-500">
             Images (JPG, PNG, GIF, WebP, SVG)

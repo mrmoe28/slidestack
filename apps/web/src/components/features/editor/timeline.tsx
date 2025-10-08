@@ -8,9 +8,11 @@ import type { TimelineClip, ClipContent, MediaFile, TextContent } from '@/types/
 
 interface TimelineProps {
   onClipsChange?: (clips: TimelineClip[]) => void
+  selectedClipId?: string | null
+  onClipSelect?: (clipId: string | null) => void
 }
 
-export function Timeline({ onClipsChange }: TimelineProps) {
+export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: TimelineProps) {
   const [clips, setClips] = useState<TimelineClip[]>([])
   const [isDraggingOver, setIsDraggingOver] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -509,15 +511,19 @@ export function Timeline({ onClipsChange }: TimelineProps) {
       // Handle text clips
       if (clip.content.type === 'text') {
         const textContent = clip.content as TextContent
+        const isSelected = selectedClipId === clip.id
         return (
           <div
             key={clip.id}
-            className="absolute h-16 bg-gradient-to-br from-orange-600 to-orange-800 rounded border-2 border-orange-500 overflow-hidden group hover:border-orange-300 transition-all shadow-lg"
+            className={`absolute h-16 bg-gradient-to-br from-orange-600 to-orange-800 rounded border-2 ${
+              isSelected ? 'border-white ring-2 ring-orange-300' : 'border-orange-500'
+            } overflow-hidden group hover:border-orange-300 transition-all shadow-lg cursor-pointer`}
             style={{
               left: `${left}px`,
               width: `${width}px`,
               top: '8px',
             }}
+            onClick={() => onClipSelect?.(clip.id)}
           >
             {/* Text icon */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -582,16 +588,20 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
       // Handle media clips (video/audio)
       const mediaFile = clip.content as MediaFile
+      const isSelected = selectedClipId === clip.id
 
       return (
         <div
           key={clip.id}
-          className="absolute h-16 bg-gray-800 rounded border-2 border-gray-600 overflow-hidden group hover:border-blue-400 transition-all shadow-lg"
+          className={`absolute h-16 bg-gray-800 rounded border-2 ${
+            isSelected ? 'border-white ring-2 ring-blue-300' : 'border-gray-600'
+          } overflow-hidden group hover:border-blue-400 transition-all shadow-lg cursor-pointer`}
           style={{
             left: `${left}px`,
             width: `${width}px`,
             top: '8px',
           }}
+          onClick={() => onClipSelect?.(clip.id)}
         >
           {/* Thumbnail background */}
           {mediaFile.type === 'image' && (
@@ -693,6 +703,53 @@ export function Timeline({ onClipsChange }: TimelineProps) {
 
           <div className="text-sm font-mono text-gray-700 bg-white px-3 py-1 rounded border border-gray-300">
             {formatTime(currentTime)} / {formatTime(getTotalDuration())}
+          </div>
+
+          {/* Clip Editing Toolbar */}
+          <div className="flex items-center gap-1 border-l pl-3 ml-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs font-medium text-gray-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => selectedClipId && splitClip(selectedClipId)}
+              disabled={!selectedClipId}
+              title="Split selected clip"
+            >
+              <Scissors className="w-3.5 h-3.5 mr-1" />
+              Split
+            </Button>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs font-medium text-gray-700 hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => {
+                if (!selectedClipId) return
+                const clip = clips.find(c => c.id === selectedClipId)
+                if (!clip) return
+                const newDuration = prompt(`Enter new duration (current: ${clip.duration.toFixed(1)}s):`)
+                if (newDuration) {
+                  trimClip(selectedClipId, parseFloat(newDuration))
+                }
+              }}
+              disabled={!selectedClipId}
+              title="Cut/Trim selected clip"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 mr-1" />
+              Cut
+            </Button>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => selectedClipId && removeClip(selectedClipId)}
+              disabled={!selectedClipId}
+              title="Delete selected clip"
+            >
+              <X className="w-3.5 h-3.5 mr-1" />
+              Delete
+            </Button>
           </div>
         </div>
 
