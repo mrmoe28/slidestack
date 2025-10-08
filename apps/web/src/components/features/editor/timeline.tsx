@@ -7,13 +7,19 @@ import Image from 'next/image'
 import type { TimelineClip, ClipContent, MediaFile, TextContent } from '@/types/timeline'
 
 interface TimelineProps {
+  clips: TimelineClip[]
   onClipsChange?: (clips: TimelineClip[]) => void
   selectedClipId?: string | null
   onClipSelect?: (clipId: string | null) => void
 }
 
-export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: TimelineProps) {
-  const [clips, setClips] = useState<TimelineClip[]>([])
+export function Timeline({ clips: externalClips, onClipsChange, selectedClipId, onClipSelect }: TimelineProps) {
+  const [clips, setClips] = useState<TimelineClip[]>(externalClips)
+
+  // Sync with external clips when they change
+  useEffect(() => {
+    setClips(externalClips)
+  }, [externalClips])
   const [isDraggingOver, setIsDraggingOver] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -1132,8 +1138,8 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
           <div
             className="relative h-full"
             style={{
-              minWidth: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND, 800)}px`,
-              width: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND, 800)}px`
+              minWidth: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND + 500, 1600)}px`,
+              width: `${Math.max(getTotalDuration() * PIXELS_PER_SECOND + 500, 1600)}px`
             }}
           >
             {/* Time Ruler */}

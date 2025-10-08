@@ -338,6 +338,7 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
       {/* Timeline Area - Fixed height at bottom */}
       <div className="flex-shrink-0 h-80 bg-white border-t border-gray-200">
         <Timeline
+          clips={clips}
           onClipsChange={handleClipsChange}
           selectedClipId={selectedClipId}
           onClipSelect={handleClipSelect}
