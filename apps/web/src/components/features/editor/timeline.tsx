@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, TrimIcon as Trim } from 'lucide-react'
+import { X, Play, Pause, SkipForward, SkipBack, ZoomIn, ZoomOut, Music, Video as VideoIcon, Scissors, ArrowLeftRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 
@@ -513,7 +513,7 @@ export function Timeline({ onClipsChange }: TimelineProps) {
               }}
               title="Trim clip"
             >
-              <Trim className="w-3 h-3" />
+              <ArrowLeftRight className="w-3 h-3" />
             </Button>
 
             {/* Delete button */}
