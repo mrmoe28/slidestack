@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { ArrowLeft, Save, Play, Loader2 } from 'lucide-react'
@@ -45,6 +45,39 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
   const [isRendering, setIsRendering] = useState(false)
   const [totalDuration, setTotalDuration] = useState(0)
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
+  const [isLoadingProject, setIsLoadingProject] = useState(true)
+
+  // Load saved project config on mount
+  useEffect(() => {
+    const loadProjectConfig = async () => {
+      try {
+        setIsLoadingProject(true)
+
+        // Fetch full project config including timeline
+        const response = await fetch(`/api/projects/${project.id}`)
+        if (!response.ok) throw new Error('Failed to load project')
+
+        const data = await response.json()
+        const config = data.project.config as { timeline?: TimelineClip[], duration?: number } | null
+
+        if (config?.timeline && Array.isArray(config.timeline)) {
+          setClips(config.timeline)
+
+          // Calculate total duration
+          const videoClips = config.timeline.filter(c => c.track === 'video')
+          const duration = videoClips.reduce((total, clip) => total + clip.duration, 0)
+          setTotalDuration(duration)
+        }
+      } catch (error) {
+        console.error('Failed to load project config:', error)
+        toast.error('Failed to load project data')
+      } finally {
+        setIsLoadingProject(false)
+      }
+    }
+
+    loadProjectConfig()
+  }, [project.id])
 
   const handleClipsChange = useCallback((updatedClips: TimelineClip[]) => {
     setClips(updatedClips)
@@ -161,6 +194,18 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Show loading indicator while project config loads
+  if (isLoadingProject) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-orange-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading project...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -36,6 +36,11 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
   const router = useRouter()
   const { toast } = useToast()
 
+  // Prefetch project route on hover for faster navigation
+  const handleMouseEnter = () => {
+    router.prefetch(`/projects/${project.id}/edit`)
+  }
+
   const handleDelete = async () => {
     setDeleting(true)
 
@@ -106,8 +111,10 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" asChild>
-              <Link href={`/projects/${project.id}/edit`}>Edit</Link>
+            <Button size="sm" variant="outline" asChild onMouseEnter={handleMouseEnter}>
+              <Link href={`/projects/${project.id}/edit`} prefetch={true}>
+                Edit
+              </Link>
             </Button>
             {project.status === 'completed' && project.outputUrl && (
               <Button size="sm" onClick={handleDownload}>
