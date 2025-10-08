@@ -438,6 +438,7 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
     const currentMediaFile = currentVideoClip.content as MediaFile
     const currentElement = document.createElement('div')
     currentElement.className = 'absolute inset-0 flex items-center justify-center transition-all duration-100'
+    currentElement.style.transformOrigin = 'center center'
 
     if (isInTransition && nextVideoClip) {
       const transitionType = nextVideoClip.transition?.type || 'fade'
@@ -455,7 +456,8 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
           currentElement.style.transform = `translateX(${transitionProgress * 100}%)`
           break
         case 'zoom':
-          currentElement.style.transform = `scale(${1 + transitionProgress})`
+          // Zoom out effect - scale up to 1.5x and fade out
+          currentElement.style.transform = `scale(${1 + transitionProgress * 0.5})`
           currentElement.style.opacity = String(1 - transitionProgress)
           break
         case 'wipe':
@@ -480,6 +482,7 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
       const nextMediaFile = nextVideoClip.content as MediaFile
       const nextElement = document.createElement('div')
       nextElement.className = 'absolute inset-0 flex items-center justify-center transition-all duration-100'
+      nextElement.style.transformOrigin = 'center center'
 
       const transitionType = nextVideoClip.transition?.type || 'fade'
 
@@ -496,7 +499,8 @@ export function Timeline({ onClipsChange, selectedClipId, onClipSelect }: Timeli
           nextElement.style.transform = `translateX(-${(1 - transitionProgress) * 100}%)`
           break
         case 'zoom':
-          nextElement.style.transform = `scale(${1 - transitionProgress * 0.5})`
+          // Zoom in effect - scale from 0.5x to 1x and fade in
+          nextElement.style.transform = `scale(${0.5 + transitionProgress * 0.5})`
           nextElement.style.opacity = String(transitionProgress)
           break
         case 'wipe':

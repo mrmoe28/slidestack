@@ -225,7 +225,7 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
         <main className="flex-1 flex flex-col bg-gray-50 min-w-0">
           <div className="flex-1 flex items-center justify-center p-6">
             <div className="w-full h-full max-w-5xl max-h-full flex items-center justify-center relative">
-              <div id="preview-canvas" className="w-full aspect-video bg-white rounded-lg shadow-xl flex items-center justify-center border-2 border-gray-200 relative">
+              <div id="preview-canvas" className="w-full aspect-video bg-white rounded-lg shadow-xl flex items-center justify-center border-2 border-gray-200 relative overflow-hidden">
                 <p className="text-gray-400 text-lg">Preview Canvas</p>
                 <PreviewControls />
               </div>
