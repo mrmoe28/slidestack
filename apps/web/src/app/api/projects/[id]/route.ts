@@ -15,7 +15,7 @@ const updateProjectSchema = z.object({
 // GET /api/projects/[id] - Get single project
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -24,12 +24,14 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     const [project] = await db
       .select()
       .from(projects)
       .where(
         and(
-          eq(projects.id, params.id),
+          eq(projects.id, id),
           eq(projects.userId, session.user.id)
         )
       )
@@ -52,7 +54,7 @@ export async function GET(
 // PATCH /api/projects/[id] - Update project
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -61,6 +63,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
     const validatedData = updateProjectSchema.parse(body)
 
@@ -72,7 +75,7 @@ export async function PATCH(
       })
       .where(
         and(
-          eq(projects.id, params.id),
+          eq(projects.id, id),
           eq(projects.userId, session.user.id)
         )
       )
@@ -102,7 +105,7 @@ export async function PATCH(
 // DELETE /api/projects/[id] - Delete project
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -111,11 +114,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     const [deletedProject] = await db
       .delete(projects)
       .where(
         and(
-          eq(projects.id, params.id),
+          eq(projects.id, id),
           eq(projects.userId, session.user.id)
         )
       )

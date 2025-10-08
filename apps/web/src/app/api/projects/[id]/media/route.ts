@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 // GET /api/projects/[id]/media - Get all media files for a project
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -16,13 +16,15 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Verify project belongs to user
     const [project] = await db
       .select()
       .from(projects)
       .where(
         and(
-          eq(projects.id, params.id),
+          eq(projects.id, id),
           eq(projects.userId, session.user.id)
         )
       )
@@ -43,7 +45,7 @@ export async function GET(
         order: mediaFiles.order,
       })
       .from(mediaFiles)
-      .where(eq(mediaFiles.projectId, params.id))
+      .where(eq(mediaFiles.projectId, id))
       .orderBy(mediaFiles.order)
 
     return NextResponse.json({ files })

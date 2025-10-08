@@ -16,7 +16,7 @@ const renderRequestSchema = z.object({
 // POST /api/projects/[id]/render - Start a render job
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -25,13 +25,15 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Verify project ownership
     const [project] = await db
       .select()
       .from(projects)
       .where(
         and(
-          eq(projects.id, params.id),
+          eq(projects.id, id),
           eq(projects.userId, session.user.id)
         )
       )
@@ -48,7 +50,7 @@ export async function POST(
     const [job] = await db
       .insert(renderJobs)
       .values({
-        projectId: params.id,
+        projectId: id,
         status: 'queued',
         progress: 0,
       })
@@ -69,7 +71,7 @@ export async function POST(
         status: 'processing',
         updatedAt: new Date(),
       })
-      .where(eq(projects.id, params.id))
+      .where(eq(projects.id, id))
 
     // TODO: Send job to worker queue (Redis/BullMQ)
     // For now, just return the job ID
@@ -98,7 +100,7 @@ export async function POST(
 // GET /api/projects/[id]/render - Get render job status
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -107,13 +109,15 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Verify project ownership
     const [project] = await db
       .select()
       .from(projects)
       .where(
         and(
-          eq(projects.id, params.id),
+          eq(projects.id, id),
           eq(projects.userId, session.user.id)
         )
       )
@@ -127,7 +131,7 @@ export async function GET(
     const [job] = await db
       .select()
       .from(renderJobs)
-      .where(eq(renderJobs.projectId, params.id))
+      .where(eq(renderJobs.projectId, id))
       .orderBy(renderJobs.createdAt)
       .limit(1)
 
