@@ -121,8 +121,8 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
       const { jobId } = await response.json()
 
       toast.success('Rendering started! This may take a few minutes...', {
-        description: `Job ID: ${jobId}\n\nRendered videos will be saved to your project folder and accessible from the dashboard once complete.`,
-        duration: 8000,
+        description: `Job ID: ${jobId}\n\n📍 Video Location: Your rendered video will be saved to cloud storage (Cloudflare R2) and accessible from the dashboard once complete.\n\nNote: Full render processing is coming soon! This creates a render job for now.`,
+        duration: 10000,
       })
 
       // TODO: Implement job status polling and download link
