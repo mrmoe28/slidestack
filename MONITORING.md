@@ -22,12 +22,19 @@
 4. ✅ Converted MediaUploader to lazy loading pattern (onMouseEnter/onFocus triggers)
 5. ✅ Removed unused useEffect import (ESLint fix)
 6. ✅ Performance optimization complete - faster page loads with SSR support
+7. ✅ Added drag-to-resize functionality for timeline clips
+
+### Recent Features
+- **Drag-to-Resize Timeline Clips**: Users can now drag clip edges to adjust duration (no more manual input)
+- **Visual Resize Handles**: Hover over clip edges to see resize cursor
+- **Real-time Duration Updates**: Clip duration updates live while dragging
+- **Minimum Duration Enforcement**: Clips cannot be resized below 0.5 seconds
 
 ### Latest Commit
-- **Hash**: 27583af
-- **Type**: Hydration fix + Performance optimization
-- **Changes**: Next.js dynamic() imports with ssr:false for all lazy components
-- **Issue Resolved**: React error #418 hydration mismatch (SSR/client rendering incompatibility)
+- **Hash**: f54fac4
+- **Type**: Feature addition (drag-to-resize)
+- **Changes**: Resize handles on all timeline clips, removed trim button, added drag handlers
+- **User Benefit**: Intuitive clip duration adjustment like professional video editors
 
 ---
 
