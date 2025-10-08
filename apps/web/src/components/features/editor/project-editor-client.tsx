@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Play, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -40,6 +40,7 @@ interface ProjectEditorClientProps {
 }
 
 export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
+  const router = useRouter()
   const [clips, setClips] = useState<TimelineClip[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isRendering, setIsRendering] = useState(false)
@@ -213,11 +214,9 @@ export function ProjectEditorClient({ project }: ProjectEditorClientProps) {
       {/* Header - Fixed height */}
       <header className="flex-shrink-0 bg-white border-b shadow-sm px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard">
-              <ArrowLeft className="w-4 h-4 mr-1.5" />
-              Back
-            </Link>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Back
           </Button>
           <div className="border-l pl-3">
             <h1 className="text-base font-semibold text-gray-900">{project.title}</h1>

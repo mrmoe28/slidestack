@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Music, Play, Pause, Plus } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Music, Play, Pause, Plus, Upload, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useToast } from '@/hooks/use-toast'
 
 interface AudioTrack {
   id: string
@@ -11,6 +12,11 @@ interface AudioTrack {
   duration: number
   url: string
   category: string
+  isCustom?: boolean
+}
+
+interface AudioLibraryProps {
+  projectId: string
 }
 
 const AUDIO_TRACKS: AudioTrack[] = [
@@ -72,9 +78,48 @@ const AUDIO_TRACKS: AudioTrack[] = [
   },
 ]
 
-export function AudioLibrary() {
+export function AudioLibrary({ projectId }: AudioLibraryProps) {
+  const { toast } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
+  const [customTracks, setCustomTracks] = useState<AudioTrack[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  // Fetch user-uploaded audio files
+  useEffect(() => {
+    const fetchAudioFiles = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/projects/${projectId}/media`)
+
+        if (!response.ok) throw new Error('Failed to fetch audio files')
+
+        const data = await response.json()
+
+        // Filter only audio files
+        const audioFiles: AudioTrack[] = data.files
+          .filter((file: any) => file.type.startsWith('audio/'))
+          .map((file: any) => ({
+            id: file.id,
+            name: file.filename,
+            duration: file.duration || 0,
+            url: file.url,
+            category: 'Custom',
+            isCustom: true,
+          }))
+
+        setCustomTracks(audioFiles)
+      } catch (error) {
+        console.error('Failed to fetch audio files:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAudioFiles()
+  }, [projectId])
 
   const handlePlayPause = async (track: AudioTrack) => {
     if (playingTrackId === track.id) {
@@ -119,6 +164,73 @@ export function AudioLibrary() {
     }
   }
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    setUploading(true)
+
+    try {
+      const file = files[0]
+
+      // Validate file type
+      if (!file.type.startsWith('audio/')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please upload an audio file (MP3, WAV, OGG, etc.)',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      // Upload file
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('projectId', projectId)
+      formData.append('order', String(customTracks.length))
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const data = await response.json()
+
+      // Add to custom tracks
+      const newTrack: AudioTrack = {
+        id: data.file.id,
+        name: data.file.filename,
+        duration: data.file.duration || 0,
+        url: data.file.url,
+        category: 'Custom',
+        isCustom: true,
+      }
+
+      setCustomTracks((prev) => [newTrack, ...prev])
+
+      toast({
+        title: 'Audio uploaded',
+        description: 'Your audio file has been uploaded successfully.',
+      })
+    } catch (error) {
+      console.error('Upload error:', error)
+      toast({
+        title: 'Upload failed',
+        description: 'Failed to upload audio file. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   const handleAddToTimeline = (track: AudioTrack) => {
     // Create a media file object compatible with timeline
     const mediaFile = {
@@ -147,15 +259,42 @@ export function AudioLibrary() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Combine custom tracks and preset tracks
+  const allTracks = [...customTracks, ...AUDIO_TRACKS]
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-900">Audio Library</h3>
-        <Music className="w-4 h-4 text-gray-500" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <Upload className="w-3 h-3" />
+          )}
+        </Button>
       </div>
 
-      <div className="space-y-2 max-h-[400px] overflow-y-auto">
-        {AUDIO_TRACKS.map((track) => (
+      {loading ? (
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+          {allTracks.map((track) => (
           <Card
             key={track.id}
             className="p-3 hover:bg-gray-50 transition-colors"
@@ -205,11 +344,12 @@ export function AudioLibrary() {
             )}
           </Card>
         ))}
-      </div>
+        </div>
+      )}
 
       <div className="pt-2 border-t">
         <p className="text-xs text-gray-500 italic">
-          Royalty-free music from SoundHelix
+          {customTracks.length > 0 ? `${customTracks.length} custom track${customTracks.length > 1 ? 's' : ''} • ` : ''}Royalty-free music from SoundHelix
         </p>
       </div>
     </div>

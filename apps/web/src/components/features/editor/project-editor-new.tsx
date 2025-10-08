@@ -9,12 +9,12 @@ interface ProjectEditorProps {
   projectTitle: string
 }
 
-export function ProjectEditorNew({ projectId: _projectId, projectTitle: _projectTitle }: ProjectEditorProps) {
+export function ProjectEditorNew({ projectId, projectTitle: _projectTitle }: ProjectEditorProps) {
   return (
     <div className="h-full flex flex-col space-y-4">
       {/* Audio Library */}
       <div>
-        <AudioLibrary />
+        <AudioLibrary projectId={projectId} />
       </div>
 
       {/* Transitions */}
