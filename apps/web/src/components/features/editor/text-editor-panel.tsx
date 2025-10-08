@@ -55,8 +55,12 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
       setFontFamily(textContent.fontFamily)
       setColor(textContent.color)
       setBackgroundColor(textContent.backgroundColor || 'rgba(0, 0, 0, 0.5)')
-      // Handle custom position by defaulting to center
-      setPosition(textContent.position === 'custom' ? 'center' : textContent.position)
+      // Handle position - custom positions default to center in UI
+      if (textContent.position === 'custom') {
+        setPosition('center')
+      } else {
+        setPosition(textContent.position)
+      }
       setAlignment(textContent.alignment)
     }
   }, [selectedClip])
