@@ -44,7 +44,7 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
   const [fontFamily, setFontFamily] = useState('Arial')
   const [color, setColor] = useState('#FFFFFF')
   const [backgroundColor, setBackgroundColor] = useState('rgba(0, 0, 0, 0.5)')
-  const [position, setPosition] = useState<'top' | 'center' | 'bottom'>('center')
+  const [position, setPosition] = useState<'top' | 'center' | 'bottom' | 'custom'>('center')
   const [alignment, setAlignment] = useState<'left' | 'center' | 'right'>('center')
 
   useEffect(() => {
@@ -55,7 +55,8 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
       setFontFamily(textContent.fontFamily)
       setColor(textContent.color)
       setBackgroundColor(textContent.backgroundColor || 'rgba(0, 0, 0, 0.5)')
-      setPosition(textContent.position)
+      // Handle custom position by defaulting to center
+      setPosition(textContent.position === 'custom' ? 'center' : textContent.position)
       setAlignment(textContent.alignment)
     }
   }, [selectedClip])
