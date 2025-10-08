@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth'
 import { db, projects, eq, desc } from '@slideshow/db'
 import { NewProjectDialog } from '@/components/features/projects/new-project-dialog'
 import { ProjectCard } from '@/components/features/projects/project-card'
+import { RenderedVideos } from '@/components/features/projects/rendered-videos'
 
 export const metadata: Metadata = {
   title: 'Dashboard - SlideShow',
@@ -78,6 +79,19 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Rendered Videos Section */}
+        <RenderedVideos
+          videos={userProjects
+            .filter((p: typeof projects.$inferSelect) => p.status === 'completed' && p.outputUrl)
+            .map((p: typeof projects.$inferSelect) => ({
+              id: p.id,
+              title: p.title,
+              description: p.description,
+              outputUrl: p.outputUrl!,
+              createdAt: p.createdAt,
+            }))}
+        />
 
         {/* Projects List */}
         <div>
