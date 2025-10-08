@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Type, AlignLeft, AlignCenter, AlignRight, Palette } from 'lucide-react'
+import { Type, AlignLeft, AlignCenter, AlignRight, Palette, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -109,6 +109,8 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
   const [backgroundColor, setBackgroundColor] = useState('rgba(0, 0, 0, 0.5)')
   const [position, setPosition] = useState<'top' | 'center' | 'bottom' | 'custom'>('center')
   const [alignment, setAlignment] = useState<'left' | 'center' | 'right'>('center')
+  const [linkEnabled, setLinkEnabled] = useState(false)
+  const [link, setLink] = useState('')
 
   useEffect(() => {
     if (selectedClip && selectedClip.content.type === 'text') {
@@ -125,6 +127,8 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
         setPosition(textContent.position)
       }
       setAlignment(textContent.alignment)
+      setLinkEnabled(textContent.linkEnabled || false)
+      setLink(textContent.link || '')
     }
   }, [selectedClip])
 
@@ -207,6 +211,50 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
           className="w-full min-h-[80px] px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
           placeholder="Enter your text here..."
         />
+      </div>
+
+      {/* Clickable Link */}
+      <div className="space-y-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-blue-600" />
+            <Label className="text-xs font-medium text-gray-700">Make Text Clickable</Label>
+          </div>
+          <Button
+            size="sm"
+            variant={linkEnabled ? 'default' : 'outline'}
+            className="h-7 text-xs"
+            onClick={() => {
+              const newEnabled = !linkEnabled
+              setLinkEnabled(newEnabled)
+              handleUpdate({ linkEnabled: newEnabled })
+            }}
+          >
+            {linkEnabled ? 'Enabled' : 'Disabled'}
+          </Button>
+        </div>
+
+        {linkEnabled && (
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="link-url" className="text-xs text-gray-600">
+              Link URL
+            </Label>
+            <Input
+              id="link-url"
+              type="url"
+              value={link}
+              onChange={(e) => {
+                setLink(e.target.value)
+                handleUpdate({ link: e.target.value })
+              }}
+              className="text-sm"
+              placeholder="https://example.com"
+            />
+            <p className="text-xs text-gray-500 italic">
+              When viewers click the text in the video, they&apos;ll be taken to this URL
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Font Family */}
@@ -395,7 +443,15 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
 
       {/* Preview */}
       <div className="pt-3 border-t">
-        <Label className="text-xs font-medium text-gray-700 mb-2 block">Preview</Label>
+        <div className="flex items-center justify-between mb-2">
+          <Label className="text-xs font-medium text-gray-700">Preview</Label>
+          {linkEnabled && link && (
+            <span className="text-xs text-blue-600 flex items-center gap-1">
+              <Link2 className="w-3 h-3" />
+              Clickable
+            </span>
+          )}
+        </div>
         <div className="relative bg-gray-900 rounded-lg aspect-video overflow-hidden">
           <div
             className={`absolute left-0 right-0 px-8 ${
@@ -414,6 +470,8 @@ export function TextEditorPanel({ selectedClip, onUpdate }: TextEditorPanelProps
                 display: 'inline-block',
                 borderRadius: '4px',
                 textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
+                textDecoration: linkEnabled && link ? 'underline' : 'none',
+                cursor: linkEnabled && link ? 'pointer' : 'default',
               }}
             >
               {text || 'Your text here'}

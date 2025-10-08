@@ -20,6 +20,8 @@ export interface TextContent {
   customY?: number
   alignment: 'left' | 'center' | 'right'
   animation: 'none' | 'fade' | 'slide'
+  link?: string // Optional clickable URL
+  linkEnabled?: boolean // Toggle link on/off
 }
 
 export type ClipContent = MediaFile | TextContent
