@@ -430,7 +430,11 @@ export function Timeline({ onClipsChange }: TimelineProps) {
     const mediaFile = currentAudioClip.content as MediaFile
 
     // If audio element doesn't exist or is different clip, create new one
-    if (!audioElement || audioElement.src !== mediaFile.url) {
+    // Compare URLs properly (audioElement.src is absolute, mediaFile.url might be relative)
+    const currentSrc = audioElement?.src || ''
+    const newSrc = mediaFile.url.startsWith('http') ? mediaFile.url : window.location.origin + mediaFile.url
+
+    if (!audioElement || currentSrc !== newSrc) {
       if (audioElement) {
         audioElement.pause()
       }
